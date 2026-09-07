@@ -1,59 +1,28 @@
 # Printing
 
-## Orientation strategy
-
-The chassis is split into two PETG parts on the **inclined plane that carries
-the puck floors** (local z = −10.5 mm, parallel to the top face). Both parts
-print flat, top side up, with no supports.
-
-Why this plane rather than a horizontal one, and why not face-down:
-
-- **The puck seats become through-holes.** The top plate is a constant
-  10.5 mm slab; the bores go all the way through it and the pucks sit on the
-  base's sloped top face. A through-hole printed vertically is the most
-  dimensionally reliable feature FDM can make: no ceiling, no floor, no
-  stair-stepping. The only fit-critical dimension is the bore diameter, and
-  it is printed in the plane of the bed. Seat depth is the plate thickness,
-  which is set by layer count.
-- **Face-down was never viable.** Printing the plate with its top face on the
-  bed would put the 144 × 101 mm recess floor and both bore floors
-  5–10 mm above the bed as unsupported ceilings. The recess floor alone is a
-  bigger bridge than the cable bay ever was. The top face is 90 % covered by
-  the TPU insert anyway; the visible 7 mm border prints cleanly top-up.
-- **A horizontal parting plane could not hold the cable bay.** It had to sit
-  under the thin front of the recess (≤ 9 mm up) to keep the puck bores in the
-  plate, which left ≤ 7 mm of bay height in the base, or pushed the bay back
-  into a bridged pocket. On the inclined plane the base is ~39 mm tall at the
-  rear, so the bay lives entirely there as an open-topped slot roofed by the
-  flat underside of the plate.
-- **Every internal cavity opens onto the parting plane** or the top face. The
-  bend envelope is a through-slot in the plate plus a 3 mm tray in the base;
-  the plug chase is an open trench in the puck floor (covered by the puck in
-  use); the bay is open-topped; the rear access window is a notch in the base
-  whose lintel is the plate. Nothing is bridged.
-- **The parting line is horizontal on the front and rear faces and runs at
-  18° along the sides**, 10.5 mm below the top face. With the reveal groove it
-  reads as a lid on a body, which is what it is.
-
-The only downward-facing ceilings anywhere are the four 6.3 mm magnet pockets
-in the plate underside and the four 8.5 mm foot pockets in the base underside.
-Both are below `max_bridge_span` (10 mm) and asserted. The plate's front and
-rear faces lean 18° (`top_angle`), asserted against `max_overhang_angle`.
-Every chamfer is derived from `max_overhang_angle` via `chamfer_rise()`.
+Every part prints flat, top side up, with no supports and nothing to rotate
+in the slicer. The chassis is parted on the inclined plane carrying the puck
+floors, so the puck seats are through-bores in the plate and the base's
+sloped face is the puck floor. The only downward-facing ceilings anywhere are
+the four 6.3 mm magnet pockets and the four 8.5 mm foot pockets, both well
+inside `max_bridge_span` (10 mm) and asserted.
 
 ## Parts and orientation
 
 | Part | Material | Orientation | Supports | Footprint (bed) |
 |---|---|---|---|---|
 | `<style>_base` | PETG | as exported: flat bottom on bed, sloped face up | none | 158 × 110 |
-| `<style>_top_plate` | PETG | as exported: parting face on bed, top face up | none | 158 × 116 |
+| `<style>_top_plate` | PETG | as exported: parting face on bed, top face up | none | 158 × 118 |
 | `<style>_top_insert` | TPU | as exported: flat, top up | none | 144 × 102 |
 | `dowel_pins` | PETG | as exported, standing | none | tiny |
 | `fit_test` | PETG | as exported | none | 40 × 40 |
 | `fit_test_mat` | TPU | as exported | none | 40 × 40 |
 
-The base and top plate fit a 256 mm bed side by side (158 + 158 > 256, so
-print them nose-to-tail or in two jobs). Nothing needs rotating in the slicer.
+The base and top plate are 158 mm wide each, so they do not fit side by side
+on a 256 mm bed — print them nose-to-tail. `make sets` does that for you:
+`<style>_set_petg.3mf` holds the base, the plate and both pins as separate
+objects already arranged at 172 × 235 mm. The TPU insert is a separate job
+(`<style>_set_tpu.3mf`) because of the filament change.
 
 ## Settings — PETG (base, top plate, pins)
 

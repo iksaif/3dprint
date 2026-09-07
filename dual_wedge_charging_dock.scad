@@ -5,7 +5,7 @@
 // the top plate is a constant-thickness slab with THROUGH bores, the base is a
 // wedge whose sloped top face IS the puck floor. Every printable part prints
 // flat, supportless, with no bridge longer than max_bridge_span.
-// See PRINTING.md and CHANGELOG.md for the reasoning.
+// See PRINTING.md for orientation, slicer settings and assembly.
 //
 // Units: millimetres. World coordinates: X across, Y front->rear, Z up.
 // "Local" (top-frame) coordinates: origin at the front top edge, y up the
@@ -16,7 +16,7 @@
 // Visual style
 style = "soft_monolith"; // [soft_monolith, floating_deck, faceted, furniture]
 // What to render / export
-part = "assembly"; // [assembly, chassis, base, top_plate, top_insert, top_insert_flat, mat, dowel_pins, set_petg, set_tpu, fit_test, fit_test_mat, fit_dummies, cable_clearance, dimensions]
+part = "assembly"; // [assembly, chassis, base, top_plate, top_insert, top_insert_flat, mat, dowel_pins, set_petg, set_tpu, fit_test, fit_test_mat, fit_dummies, cable_clearance, showcase, dimensions]
 // Retention of the top plate on the base (two locating dowels are always present)
 join_method = "magnets"; // [magnets, inserts, none]
 // Show non-printing puck/cable reference solids in the assembly view
@@ -867,6 +867,20 @@ module assembly() {
     if (show_fit_dummies) fit_dummies();
 }
 
+// Presentation render: the dock as it looks in use, with the pucks seated but
+// without the cable-clearance envelopes that fit_dummies() draws for
+// interference checking. Not printable -- the pucks are not part geometry.
+module showcase() {
+    chassis_colour = style == "furniture" ? [0.63, 0.45, 0.31]
+                   : style == "faceted"   ? [0.15, 0.17, 0.18]
+                   :                        [0.25, 0.27, 0.26];
+    color(chassis_colour) base();
+    color(chassis_colour * 1.15) top_plate();
+    color([0.025, 0.03, 0.03]) top_insert();
+    for (cx = puck_xs)
+        color([0.93, 0.94, 0.92]) puck_fit_dummy(cx);
+}
+
 module dim(name, value) { echo(str("DIM|", name, "|", value)); }
 
 module echo_dimensions() {
@@ -944,5 +958,6 @@ else if (part == "set_petg") {
     translate([body_width / 2 + set_gap, 0, 0]) dowel_pins();
 }
 else if (part == "set_tpu")         top_insert_flat();
+else if (part == "showcase")        showcase();
 else if (part == "dimensions")      { echo_dimensions(); cube(1); }
 else                                assembly();

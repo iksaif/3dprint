@@ -22,13 +22,21 @@ MF_ALL     = $(STL_ALL:.stl=.3mf)
 LAZY     = --enable=lazy-union
 SET_ALL  = $(foreach s,$(STYLES),$(s)_set_petg.3mf $(s)_set_tpu.3mf)
 
-.PHONY: all stl 3mf sets check dimensions debug fit-test clean version help
+# Showcase renders, one per style. Committed, so `make shots` is only needed
+# when the geometry or the camera changes.
+SHOT_ALL    = $(foreach s,$(STYLES),docs/$(s).png)
+SHOT_SIZE   = 1600,1200
+SHOT_CAMERA = 0,52,10,68,0,30,400
+SHOT_SCHEME = Tomorrow
+
+.PHONY: all stl 3mf sets shots check dimensions debug fit-test clean version help
 
 all: stl 3mf sets DIMENSIONS.md
 
 stl: $(STL_ALL)
 3mf: $(MF_ALL)
 sets: $(SET_ALL)
+shots: $(SHOT_ALL)
 
 version:
 	$(OPENSCAD) --version
@@ -54,6 +62,10 @@ $(1)_set_petg.3mf: $(SCAD)
 # the TPU insert, printed on its own because of the filament change
 $(1)_set_tpu.3mf: $(SCAD)
 	$$(OPENSCAD) $$(OPENSCAD_FLAGS) $$(LAZY) -D 'style="$(1)"' -D 'part="set_tpu"' -o $$@ $$<
+docs/$(1).png: $(SCAD)
+	@mkdir -p docs
+	$$(OPENSCAD) $$(OPENSCAD_FLAGS) -D 'style="$(1)"' -D 'part="showcase"' \
+	  --imgsize=$$(SHOT_SIZE) --camera=$$(SHOT_CAMERA) --colorscheme=$$(SHOT_SCHEME) -o $$@ $$<
 endef
 $(foreach s,$(STYLES),$(eval $(call STYLED_RULE,$(s))))
 
@@ -106,6 +118,7 @@ clean:
 help:
 	@echo "make            render every STL and 3MF, the sets, plus DIMENSIONS.md"
 	@echo "make sets       one 3MF per dock: <style>_set_petg.3mf + <style>_set_tpu.3mf"
+	@echo "make shots      showcase render per style into docs/"
 	@echo "make check      render everything and verify meshes (watertight, manifold, on bed)"
 	@echo "make fit-test   10-minute fit coupons (PETG + TPU)"
 	@echo "make <style>_<part>.stl   e.g. make soft_monolith_top_plate.stl"

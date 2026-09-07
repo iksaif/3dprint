@@ -45,6 +45,17 @@ the top of the file (`styles`), so adding a fifth is one line:
 | `faceted` | r 3 round | 3.0 | 0.8 × 1.0 | crisp planes, 75 mm puck spacing |
 | `furniture` | r 14 squircle | 2.0 | 1.0 | broad radii for warm filaments |
 
+| | |
+|---|---|
+| ![soft_monolith](docs/soft_monolith.png) | ![floating_deck](docs/floating_deck.png) |
+| `soft_monolith` | `floating_deck` |
+| ![faceted](docs/faceted.png) | ![furniture](docs/furniture.png) |
+| `faceted` | `furniture` |
+
+Renders show the dock with the pucks seated; regenerate them with
+`make shots` (the `showcase` part). The pucks are reference solids and are
+never part of a printable export.
+
 Nested profiles (recess, insert, chamfers) are true parallel offsets of the
 outline, so borders are constant-width round every corner in every style.
 
@@ -63,6 +74,7 @@ Customizer.
 | `dowel_pins` | two 4 × 10 mm locating pins |
 | `set_petg` | base + top plate + both dowel pins, laid out on one bed |
 | `set_tpu` | the TPU insert, on its own because of the filament change |
+| `showcase` | presentation render: the dock with pucks seated, no clearance envelopes |
 | `fit_test`, `fit_test_mat` | 40 × 40 mm fit coupons (PETG / TPU) |
 | `fit_dummies`, `cable_clearance` | reference solids only |
 | `dimensions` | echoes the dimension table |
@@ -88,6 +100,7 @@ make version     # check OpenSCAD is reachable (default: arch -x86_64 openscad)
 make             # every STL + 3MF for every style, plus DIMENSIONS.md
 make check       # render everything, run asserts for every style, verify meshes
 make sets        # one 3MF per dock, every piece as a separate object
+make shots       # showcase render per style into docs/
 make fit-test    # the two fit coupons
 make soft_monolith_top_plate.stl   # any single file
 ```
@@ -111,5 +124,5 @@ This relies on OpenSCAD's `lazy-union` (the `LAZY` flag in the Makefile).
 Without it, top-level objects are unioned into one mesh on export and the
 pieces would arrive fused.
 
-See `PRINTING.md` for orientation, slicer settings and assembly, and
-`CHANGELOG.md` for why things are the way they are.
+See `PRINTING.md` for orientation, slicer settings, the fit-test procedure
+and assembly.
