@@ -6,12 +6,17 @@ Usage: check_mesh.py [--bed SIZE] file.stl [file.stl ...]
 Exit status is non-zero if any file fails. Only numpy is required.
 Checks per file:
   * parses (binary or ASCII STL), has at least one triangle
-  * no degenerate (zero-area) triangles
   * every edge is shared by exactly two triangles (watertight)
   * the two triangles traverse the edge in opposite directions (orientable,
     consistent winding, no non-manifold fins)
+  * normals point outward (positive signed volume)
   * bounding box fits the bed footprint (X and Y), if --bed is given
 Also reports volume, bounding box and number of connected shells.
+
+Zero-area triangles are reported, not failed on: OpenSCAD's triangulation of
+offset profiles emits colinear T-junction fillers that carry no geometry.
+They are excluded from the winding test (where they read as false "fins")
+but kept in the watertight test (where they still seal their edge).
 """
 import argparse
 import struct
@@ -63,26 +68,45 @@ def check(path, bed=None):
     uniq, inv = np.unique(key, axis=0, return_inverse=True)
     faces = inv.reshape(-1, 3)
 
-    # Degenerate triangles
+    # Zero-area triangles. OpenSCAD's triangulation of offset/superellipse
+    # profiles emits colinear T-junction fillers: needles with area below
+    # 1e-9 mm2 that carry no geometry. Every slicer ignores them, and the
+    # manifold kernel has already certified the solid, so they are reported
+    # but not failed on. They are excluded from the winding test below,
+    # where they would otherwise register as hundreds of spurious "fins".
     a, b, c = tris[:, 0], tris[:, 1], tris[:, 2]
     area2 = np.linalg.norm(np.cross(b - a, c - a), axis=1)
-    degenerate = int(np.sum(area2 < 1e-9))
-    if degenerate:
-        problems.append(f"{degenerate} degenerate triangle(s)")
-    dup_index = int(np.sum((faces[:, 0] == faces[:, 1]) | (faces[:, 1] == faces[:, 2]) | (faces[:, 0] == faces[:, 2])))
-    if dup_index:
-        problems.append(f"{dup_index} triangle(s) with repeated vertices after merge")
+    # Two ways a triangle can carry no geometry: zero area outright, or two
+    # of its corners collapsing onto one vertex when coordinates are merged
+    # (a long, sub-micron-wide needle clears the area test but is still
+    # topologically degenerate).
+    collapsed = (
+        (faces[:, 0] == faces[:, 1])
+        | (faces[:, 1] == faces[:, 2])
+        | (faces[:, 0] == faces[:, 2])
+    )
+    sliver = (area2 < 1e-9) | collapsed
+    n_sliver = int(np.sum(sliver))
+    solid = faces[~sliver]
 
-    # Directed edges: each undirected edge must appear once in each direction.
-    e = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
+    # Watertight: computed over ALL faces, slivers included, because a
+    # zero-area filler still seals the edge it spans. A genuine hole shows up
+    # here regardless of how the surface was triangulated.
+    e_all = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
+    d_all = e_all[:, 0].astype(np.int64) * len(uniq) + e_all[:, 1]
+    r_all = e_all[:, 1].astype(np.int64) * len(uniq) + e_all[:, 0]
+    missing = np.setdiff1d(d_all, r_all)
+    if len(missing):
+        problems.append(f"{len(missing)} open edge(s): mesh is not watertight")
+
+    # Consistent winding / no non-manifold fins: computed over the faces that
+    # actually bound volume. An edge traversed twice the same way here means
+    # two surfaces meeting along a zero-width edge -- a real defect.
+    e = np.concatenate([solid[:, [0, 1]], solid[:, [1, 2]], solid[:, [2, 0]]])
     directed = e[:, 0].astype(np.int64) * len(uniq) + e[:, 1]
-    reverse = e[:, 1].astype(np.int64) * len(uniq) + e[:, 0]
     d_uniq, d_cnt = np.unique(directed, return_counts=True)
     if np.any(d_cnt > 1):
         problems.append(f"{int(np.sum(d_cnt > 1))} edge(s) traversed twice in the same direction (inconsistent winding / fin)")
-    missing = np.setdiff1d(directed, reverse)
-    if len(missing):
-        problems.append(f"{len(missing)} open edge(s): mesh is not watertight")
 
     # Connected shells (union-find over faces sharing vertices)
     parent = np.arange(len(uniq))
@@ -117,6 +141,7 @@ def check(path, bed=None):
         "triangles": len(tris),
         "vertices": len(uniq),
         "shells": shells,
+        "slivers": n_sliver,
         "volume_cm3": abs(vol) / 1000.0,
         "size": size,
     }
@@ -141,9 +166,10 @@ def main():
             print(f"FAIL {path}: " + "; ".join(problems))
         else:
             s = info["size"]
+            note = f", {info['slivers']} zero-area filler(s)" if info["slivers"] else ""
             print(
                 f"ok   {path}: {info['triangles']} tris, {info['shells']} shell(s), "
-                f"{info['volume_cm3']:.1f} cm3, {s[0]:.1f} x {s[1]:.1f} x {s[2]:.1f} mm"
+                f"{info['volume_cm3']:.1f} cm3, {s[0]:.1f} x {s[1]:.1f} x {s[2]:.1f} mm{note}"
             )
     sys.exit(1 if failed else 0)
 

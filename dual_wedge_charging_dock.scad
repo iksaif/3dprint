@@ -275,8 +275,12 @@ mat_cable_notch_radius  = 2.2;
 // Non-printing reference solids
 cable_dummy_diameter = 4.2;
 
-// Fit-test coupon
-fit_quadrant = 30;
+// Fit-test coupon.
+// Must not equal puck_hole_diameter / 2: at exactly the bore radius the
+// coupon's bounding box is tangent to the bore and the two lobes meet along a
+// zero-width edge, which is non-manifold (and would print as a knife edge).
+// Keep it just inside so the box cuts the bore as a secant.
+fit_quadrant = puck_hole_diameter / 2 - 0.5;
 fit_corner   = 9;
 
 // ---------------------------------------------------------------------------
@@ -669,6 +673,14 @@ module top_plate() {
     }
 }
 
+// top_plate() is built in assembly position, still on the 18 deg incline.
+// Exporting it like that hands the slicer a part tilted 18 deg off the bed,
+// which is the one thing the inclined-plane split exists to avoid. Every
+// export of the plate goes through here so it lands flat, parting face down.
+module top_plate_print() {
+    unframe() top_plate();
+}
+
 // ---------------------------------------------------------------------------
 // TPU top insert
 // ---------------------------------------------------------------------------
@@ -891,7 +903,7 @@ module echo_dimensions() {
 // ---------------------------------------------------------------------------
 
 if (part == "base")                 base();
-else if (part == "top_plate")       top_plate();
+else if (part == "top_plate")       top_plate_print();
 else if (part == "chassis")         chassis();
 else if (part == "top_insert")      top_insert();
 else if (part == "top_insert_flat" || part == "mat") top_insert_flat();
