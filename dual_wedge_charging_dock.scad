@@ -16,7 +16,7 @@
 // Visual style
 style = "soft_monolith"; // [soft_monolith, floating_deck, faceted, furniture]
 // What to render / export
-part = "assembly"; // [assembly, chassis, base, top_plate, top_insert, top_insert_flat, mat, dowel_pins, fit_test, fit_test_mat, fit_dummies, cable_clearance, dimensions]
+part = "assembly"; // [assembly, chassis, base, top_plate, top_insert, top_insert_flat, mat, dowel_pins, set_petg, set_tpu, fit_test, fit_test_mat, fit_dummies, cable_clearance, dimensions]
 // Retention of the top plate on the base (two locating dowels are always present)
 join_method = "magnets"; // [magnets, inserts, none]
 // Show non-printing puck/cable reference solids in the assembly view
@@ -899,6 +899,30 @@ module echo_dimensions() {
 }
 
 // ---------------------------------------------------------------------------
+// Plate set layout
+//
+// One 3MF holding every piece of a dock, as separate objects (requires
+// --enable=lazy-union; see the `sets` target in the Makefile). All four pieces
+// will not fit one bed -- base + plate alone is ~232 mm of Y -- and the insert
+// is TPU, so the printable grouping is the three PETG parts in one job with
+// the insert as its own file.
+// ---------------------------------------------------------------------------
+
+set_gap = 4;   // clearance between parts on the bed
+
+// Slightly conservative: the real minimum is a little above this, so the
+// measured gap comes out a touch wider than set_gap rather than narrower.
+plate_flat_y_min = -plate_thickness * tan(top_angle);
+plate_set_shift  = body_depth + set_gap - plate_flat_y_min;
+set_petg_y_max   = plate_set_shift + top_length;
+set_petg_x_max   = body_width / 2 + set_gap + 12;
+
+assert(set_petg_y_max <= bed_size,
+       str("PETG set needs ", set_petg_y_max, " mm of Y, bed is ", bed_size));
+assert(2 * set_petg_x_max <= bed_size,
+       str("PETG set needs ", 2 * set_petg_x_max, " mm of X, bed is ", bed_size));
+
+// ---------------------------------------------------------------------------
 // Dispatch
 // ---------------------------------------------------------------------------
 
@@ -912,5 +936,13 @@ else if (part == "fit_test")        fit_test();
 else if (part == "fit_test_mat")    fit_test_mat();
 else if (part == "fit_dummies")     fit_dummies();
 else if (part == "cable_clearance") for (cx = puck_xs) cable_clearance(cx);
+else if (part == "set_petg") {
+    // Top level on purpose: lazy-union only splits objects here, not inside a
+    // module, so this cannot be wrapped in a set_petg() module.
+    base();
+    translate([0, plate_set_shift, 0]) top_plate_print();
+    translate([body_width / 2 + set_gap, 0, 0]) dowel_pins();
+}
+else if (part == "set_tpu")         top_insert_flat();
 else if (part == "dimensions")      { echo_dimensions(); cube(1); }
 else                                assembly();

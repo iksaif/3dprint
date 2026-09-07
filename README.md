@@ -61,6 +61,8 @@ Customizer.
 | `top_insert_flat` / `mat` | printable TPU insert, flat |
 | `top_insert` | TPU insert in place (preview) |
 | `dowel_pins` | two 4 × 10 mm locating pins |
+| `set_petg` | base + top plate + both dowel pins, laid out on one bed |
+| `set_tpu` | the TPU insert, on its own because of the filament change |
 | `fit_test`, `fit_test_mat` | 40 × 40 mm fit coupons (PETG / TPU) |
 | `fit_dummies`, `cable_clearance` | reference solids only |
 | `dimensions` | echoes the dimension table |
@@ -85,6 +87,7 @@ every case.
 make version     # check OpenSCAD is reachable (default: arch -x86_64 openscad)
 make             # every STL + 3MF for every style, plus DIMENSIONS.md
 make check       # render everything, run asserts for every style, verify meshes
+make sets        # one 3MF per dock, every piece as a separate object
 make fit-test    # the two fit coupons
 make soft_monolith_top_plate.stl   # any single file
 ```
@@ -92,6 +95,21 @@ make soft_monolith_top_plate.stl   # any single file
 Outputs are `<style>_base`, `<style>_top_plate`, `<style>_top_insert` in
 `.stl` and `.3mf`, plus `dowel_pins`, `fit_test`, `fit_test_mat`.
 `make check` needs Python 3 with numpy.
+
+Build outputs are gitignored — run `make` to generate them.
+
+### One file per dock
+
+`make sets` writes `<style>_set_petg.3mf`, holding the base, the top plate
+and both dowel pins as three separate objects already arranged on one bed
+(172 × 235 mm, so it fits a 256 mm bed), and `<style>_set_tpu.3mf` with the
+insert. Open the PETG file and slice it as one job; the TPU insert is a
+separate job because of the filament change, and all four pieces together
+would not fit a single bed anyway.
+
+This relies on OpenSCAD's `lazy-union` (the `LAZY` flag in the Makefile).
+Without it, top-level objects are unioned into one mesh on export and the
+pieces would arrive fused.
 
 See `PRINTING.md` for orientation, slicer settings and assembly, and
 `CHANGELOG.md` for why things are the way they are.

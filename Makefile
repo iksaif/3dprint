@@ -16,12 +16,19 @@ STL_COMMON = $(foreach p,$(COMMON),$(p).stl)
 STL_ALL    = $(STL_STYLED) $(STL_COMMON)
 MF_ALL     = $(STL_ALL:.stl=.3mf)
 
-.PHONY: all stl 3mf check dimensions debug fit-test clean version help
+# One 3MF per dock holding every piece as a separate object. Needs
+# lazy-union, which is what keeps top-level children from being unioned
+# into a single mesh on export.
+LAZY     = --enable=lazy-union
+SET_ALL  = $(foreach s,$(STYLES),$(s)_set_petg.3mf $(s)_set_tpu.3mf)
 
-all: stl 3mf DIMENSIONS.md
+.PHONY: all stl 3mf sets check dimensions debug fit-test clean version help
+
+all: stl 3mf sets DIMENSIONS.md
 
 stl: $(STL_ALL)
 3mf: $(MF_ALL)
+sets: $(SET_ALL)
 
 version:
 	$(OPENSCAD) --version
@@ -41,6 +48,12 @@ $(1)_top_plate.3mf: $(SCAD)
 	$$(OPENSCAD) $$(OPENSCAD_FLAGS) -D 'style="$(1)"' -D 'part="top_plate"' -o $$@ $$<
 $(1)_top_insert.3mf: $(SCAD)
 	$$(OPENSCAD) $$(OPENSCAD_FLAGS) -D 'style="$(1)"' -D 'part="top_insert_flat"' -o $$@ $$<
+# base + top plate + both dowel pins, arranged on one bed, one object each
+$(1)_set_petg.3mf: $(SCAD)
+	$$(OPENSCAD) $$(OPENSCAD_FLAGS) $$(LAZY) -D 'style="$(1)"' -D 'part="set_petg"' -o $$@ $$<
+# the TPU insert, printed on its own because of the filament change
+$(1)_set_tpu.3mf: $(SCAD)
+	$$(OPENSCAD) $$(OPENSCAD_FLAGS) $$(LAZY) -D 'style="$(1)"' -D 'part="set_tpu"' -o $$@ $$<
 endef
 $(foreach s,$(STYLES),$(eval $(call STYLED_RULE,$(s))))
 
@@ -88,10 +101,11 @@ DIMENSIONS.md: $(SCAD) Makefile
 dimensions: DIMENSIONS.md
 
 clean:
-	rm -f $(STL_ALL) $(MF_ALL) fit_dummies.stl cable_clearance.stl DIMENSIONS.md
+	rm -f $(STL_ALL) $(MF_ALL) $(SET_ALL) fit_dummies.stl cable_clearance.stl DIMENSIONS.md
 
 help:
-	@echo "make            render every STL and 3MF plus DIMENSIONS.md"
+	@echo "make            render every STL and 3MF, the sets, plus DIMENSIONS.md"
+	@echo "make sets       one 3MF per dock: <style>_set_petg.3mf + <style>_set_tpu.3mf"
 	@echo "make check      render everything and verify meshes (watertight, manifold, on bed)"
 	@echo "make fit-test   10-minute fit coupons (PETG + TPU)"
 	@echo "make <style>_<part>.stl   e.g. make soft_monolith_top_plate.stl"
