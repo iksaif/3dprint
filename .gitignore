@@ -1,0 +1,7 @@
+# Build outputs — regenerate with `make`
+*.stl
+*.3mf
+DIMENSIONS.md
+
+# Preview renders
+*.preview.png
