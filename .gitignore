@@ -5,3 +5,7 @@ DIMENSIONS.md
 
 # Preview renders
 *.preview.png
+
+# Python
+__pycache__/
+*.pyc
