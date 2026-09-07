@@ -1,7 +1,10 @@
 # Dual Wedge Charging Dock
 
+![The dock in the soft_monolith style](docs/soft_monolith.png)
+
 Parametric OpenSCAD model for an inclined desk charging dock sized for two
-Anker Zolo A25M2 round magnetic chargers. Three printed parts:
+Anker Zolo A25M2 round magnetic chargers. Three printed parts, all printable
+flat and without supports:
 
 - **base** (PETG) — a wedge whose sloped top face is the puck floor. Carries
   the open-topped cable bay, the plug trenches, the rear slack window,
@@ -45,12 +48,11 @@ the top of the file (`styles`), so adding a fifth is one line:
 | `faceted` | r 3 round | 3.0 | 0.8 × 1.0 | crisp planes, 75 mm puck spacing |
 | `furniture` | r 14 squircle | 2.0 | 1.0 | broad radii for warm filaments |
 
-| | |
+| `soft_monolith` | `floating_deck` |
 |---|---|
 | ![soft_monolith](docs/soft_monolith.png) | ![floating_deck](docs/floating_deck.png) |
-| `soft_monolith` | `floating_deck` |
+| **`faceted`** | **`furniture`** |
 | ![faceted](docs/faceted.png) | ![furniture](docs/furniture.png) |
-| `faceted` | `furniture` |
 
 Renders show the dock with the pucks seated; regenerate them with
 `make shots` (the `showcase` part). The pucks are reference solids and are
@@ -93,6 +95,42 @@ Fit dummies are never included in the printable exports.
 Two printed dowel pins on the rib between the pucks locate the plate in
 every case.
 
+## Printing
+
+Every part prints flat, top side up, **no supports**, nothing to rotate in the
+slicer. The chassis is parted on the inclined plane carrying the puck floors,
+so the puck seats are through-bores and the base's sloped face is the puck
+floor. The only downward ceilings are the 6.3 mm magnet pockets and 8.5 mm
+foot pockets — both well inside a normal bridging range, and asserted.
+
+| part | material | footprint | notes |
+|---|---|---|---|
+| `<style>_base` | PETG | 158 × 110 | flat bottom on bed, sloped face up |
+| `<style>_top_plate` | PETG | 158 × 118 | parting face on bed, top face up |
+| `<style>_top_insert` | TPU 95A | 144 × 102 | flat, top up |
+| `dowel_pins` | PETG | tiny | print two, standing, 100 % infill |
+
+**Print the fit coupons first.** `make fit-test` gives you `fit_test.stl`
+(PETG) and `fit_test_mat.stl` (TPU), ~10 minutes each. Check that a puck
+drops into the seat without force or rattle, that the TPU corner lies flat in
+the recess, and that the USB-C plug passes the trench — then adjust
+`puck_radial_clearance`, `mat_clearance_total` or `rim_cable_channel_*` before
+committing filament to a full base.
+
+Quick settings:
+
+- **PETG** — 0.2 mm layers, 4 perimeters, 5 top/bottom, 20 % infill. Ironing
+  on the plate's top surface if you have it; the 7 mm border is the most
+  visible surface on the object. Leave elephant-foot compensation at or below
+  0.1 mm, or the reveal line shows a step.
+- **TPU** — 95A (softer prints the bezel poorly), 0.2 mm, 15–25 mm/s,
+  retraction off or minimal. For the diamond top pattern set **top solid
+  layers to 0** and infill to 3D honeycomb/cubic at 30–40 % so the infill is
+  exposed — the CAD top is flat precisely so the slicer can make that texture.
+
+Full slicer settings, the complete fit-test procedure and assembly (magnets,
+cable routing, bumpers) are in **[PRINTING.md](PRINTING.md)**.
+
 ## Build
 
 ```
@@ -123,6 +161,3 @@ would not fit a single bed anyway.
 This relies on OpenSCAD's `lazy-union` (the `LAZY` flag in the Makefile).
 Without it, top-level objects are unioned into one mesh on export and the
 pieces would arrive fused.
-
-See `PRINTING.md` for orientation, slicer settings, the fit-test procedure
-and assembly.
