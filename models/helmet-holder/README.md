@@ -347,15 +347,20 @@ two things remain, both deliberate bridges: the captive-nut slots span 10 mm
 across the arm ends, and the ridge groove's closed ends span 2.2 mm. The cover
 and the pads are clean even at `--reach 1`.
 
-At **3 kg** (3× spec) the worst station along the cradle's arm reads **0.61 MPa,
-about 1 % of PETG yield** — the arm is 70 mm wide because the print orientation
-demands it, and that width is far more than the load needs.
+At **3 kg** (3× spec) the cradle's worst section reads **0.61 MPa, 1.2 % of PETG
+yield** — an 82× margin — and it falls at y = 40 mm, right at a lightening hole,
+which is exactly where it should. The other three extensions land between 0.55
+and 0.91 MPa. The arms are 70 mm wide because the print orientation demands it,
+and that is far more than the load needs.
 
-Treat `strength.py`'s headline "peak" line with suspicion, though: it reports the
-worst of all stations, and the first station sits on a thin sliver at the plate's
-back face whose second moment is meaningless. It has been quoting that artefact
-rather than the structural root all along — 3.19 MPa when the sliver was thin,
-0.69 MPa now the foot fills it. Read the table, not the headline. What
+Those numbers are new, and the old ones were wrong. `strength.py` reads the
+profile off the part's chamfered outer face, which is inset by `chamfer`, so any
+station within 1.2 mm of the back face was measuring the flange and the foot as
+two thin slivers a long way apart — a tiny second moment and a spectacular
+stress that was pure artefact. That artefact WAS the reported peak for the whole
+life of the tool: 3.19 MPa while the sliver was thin, 0.69 MPa once the foot grew
+and filled it, and never the structural root either time. The walk now starts
+past the chamfer. What
 actually limits the load is whether the TPU pads slip on the post, not part
 strength: if it ever sags, tighten the screws or fit softer pads.
 

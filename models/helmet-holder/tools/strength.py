@@ -54,6 +54,12 @@ def side_profile(tris):
 
     The extrusion axis is the installed X, which the print rotation maps to the
     print Z — so the flat side faces are the ones whose normal is +/-Z here.
+
+    CAVEAT, and it matters: the part is built with chamfered_extrude, so this
+    outermost face is the profile ERODED by the edge chamfer, not the profile
+    itself. Every section read from it is therefore a little small, which is
+    conservative and fine — except close to a face, where the erosion is the
+    whole story. See the station floor in main().
     """
     zs = [v[2] for t in tris for v in t[1:]]
     w = max(zs) - min(zs)
@@ -110,9 +116,21 @@ def main(path):
           f"load {LOAD_KG:.1f} kg at the tip")
     print(f"{'y (mm)':>8} {'height':>8} {'I (mm^4)':>12} {'M (N.mm)':>10} "
           f"{'sigma':>8}  {'util':>6}")
-    # The flange (y < 0) just rests on the cover and carries no bending, so the
-    # cantilever starts at the mounting face.
-    y0 = max(y0, 0.5)
+    # Where to start walking.
+    #
+    # The flange and the foot (y < 0) hang off the back and carry no bending, so
+    # the cantilever starts at the mounting face. But the profile above is read
+    # off the part's chamfered outer face, which is inset by `chamfer` — so at
+    # any station within `chamfer` of the back face the plate simply is not
+    # there yet, and all that remains are the flange and foot, two thin slivers
+    # a long way apart. That section has a tiny second moment and reports a
+    # spectacular stress which is pure artefact.
+    #
+    # This was the "peak bending stress at y = 0" line for the whole life of
+    # this tool: 3.19 MPa when the sliver was thin, 0.69 MPa once the foot grew
+    # and filled it. Neither number was the structural root.
+    chamfer = P.get("chamfer", 0)
+    y0 = max(y0, chamfer + 0.5)
     worst = (0, None)
     for k in range(0, 21):
         y = y0 + (y1 - y0) * k / 20 * 0.97
