@@ -26,8 +26,8 @@ the design cannot guess.
   captive M4 nut, loaded through a slot in the arm's *inner* face — invisible
   once fitted, and the post itself traps the nut there.
 * **Cover** closes the fourth face. It carries the extension ridge on its top
-  face, the snap's two leaf springs, and the two M4 socket-cap heads,
-  counterbored flush.
+  face, two shallow recesses in its underside for the extension's prisms, and
+  the two M4 socket-cap heads, counterbored flush.
 
 Both screws run front-to-back and land on the same face you reach for when you
 change an extension. Tightening pulls the cover back and clamps the post.
@@ -50,26 +50,51 @@ measures, while the back only ties the two arms together.
 ## Extensions
 
 Four ship with the project: **helmet cradle**, **strap hook**, **lock/light
-hook**, **shelf**. Drop one on from above — the ridge on the cover's top enters
-the groove in the extension's flange, and the snap clicks.
+hook**, **shelf**.
+
+**Hang it, then rotate it home.** The groove in the extension's flange drops over
+the ridge on the cover's top; swinging the bottom in takes the extension's foot
+*under* the cover, and two small prisms on that foot drop into recesses in the
+cover's underside. To take it off, press the bottom edge down and pull it toward
+you until the prisms clear, then swing out and lift off the ridge.
 
 ![](build/renders/ext_helmet_side.png)
 
 | | What it does | Optional? |
 |---|---|---|
 | **Ridge and groove** | Hard stop against the load's moment; its ends locate the extension sideways | Always on |
-| **Snap** | Two leaf springs in the cover click into a groove in the extension | `ext_snap` |
-| **M3 × 35 screw** | Up from inside the cover into a nut in the flange | `ext_lock_hole`, or just don't fit it |
+| **Foot** | Wraps under the cover's bottom edge — stops it lifting off | `ext_hook` |
+| **Prisms** | Two 6 × 4 × 1.6 mm wedges on the foot, into recesses in the cover's underside — stop it rotating out | `ext_hook` |
+| **M3 × 20 screw** | Up from inside the cover into a nut in the flange | `ext_lock_hole`, or just don't fit it |
 
-To remove a snapped extension, pull it firmly upward — about **1.9 kg**. The
-catch faces are 45°, so it cams apart under a deliberate tug and is nowhere near
-letting go under a helmet.
+### Why hooks and not a snap
 
-The extensions are the one thing that did *not* shrink with the post: a helmet
-is the same size whichever post you hang it on. They kept their width and most
-of their reach, so the cradle is now large relative to its clamp — which is
-fine, because what limits the load is the pads' grip on the post, not the
-plastic (18× margin on bending at 3 kg).
+There used to be a pair of leaf springs in the cover's face with catch bumps. They
+are gone, and the reason is worth keeping: **the ridge at the top is a pivot.**
+Once it is in its groove, the extension's only remaining freedom is rotation about
+it, so the bottom swings in along an arc. A catch bump designed to cam down a
+straight vertical drop never gets a straight vertical drop. On top of that, at
+this scale the leaf had shrunk to 1.2 mm over a 15 mm span, which prints badly.
+
+So the retention uses the rotation instead of fighting it, and two separate
+features do two separate jobs:
+
+* the **foot** wraps under the cover. Lifting drives it into the cover's
+  underside and it runs out of room at **0.8 mm**, while freeing the ridge needs
+  **3.45 mm**. It cannot be pulled off, and that is a hard stop between two
+  solid faces rather than a detent.
+* the **prisms** sit in their recesses and bind as soon as the extension starts
+  to rotate back out — measured at 1.5° of nudge.
+
+Getting it off is therefore a deliberate two-part move: press the bottom edge
+down about 1.2 mm to lift the prisms clear, pull it toward you, then unhook.
+
+`make check` runs `tools/hookcheck.py` on this, but note what that tool can and
+cannot answer. It moves the extension as a rigid body, which proves the foot and
+the prisms block what they should. It cannot model the **release**, because that
+is a flex — asked to translate down, a rigid extension just drives its own groove
+into the ridge and reports a false interference. Whether it comes off by hand is
+a question for the coupon.
 
 ### Why the joint is on the cover's top, not its face
 
@@ -98,34 +123,47 @@ its **top**:
 |---|---|
 | ![](build/renders/ridge_iso.png) | ![](build/renders/joint_sec.png) |
 
-The same reasoning put the snap's **spring on the cover** rather than the
-extension: a leaf running the cover's full height is identical on every layer,
-while a finger on the extension would begin in mid-air. The extension's half is
-a plain groove — removed material, which can never be an unsupported island.
+The same reasoning shapes the prisms. The cover prints upright, so a recess in
+its underside has a flat ceiling anchored on both sides — a bridge, which caps
+its width at 9.8 mm and is why there are two small prisms rather than one wide
+one. The extension prints on its side with X as print Z, so a prism that simply
+started partway along X would begin in mid-air; each one therefore ramps up at
+45° over 1.6 mm at both ends.
 
-Every extension gets both grooves whether or not you build the cover with the
-spring, so any extension fits any cover (verified both ways: 0.0000 mm³).
+The **foot** is not interface at all — it is part of the extension's own 2D
+profile, so it runs the full width and is a prism along the print Z, free by
+construction. Only the prisms had to earn their keep against the print.
+
+Every extension carries its foot and prisms whether or not you build the cover
+with the recesses, so any extension fits any cover (verified: 0.0000 mm³).
 
 ### The lock screw
 
-Nothing protrudes at either end. The screw is **M3 × 35** — a stock length —
+Nothing protrudes at either end. The screw is **M3 × 20** — a stock length —
 and it is the counterbore that adapts, not the screw: the head is swallowed
-**15.2 mm up inside the cover** so the tip lands 2.9 mm short of the flange's
+**29.5 mm up inside the cover** so the tip lands 2.75 mm short of the flange's
 top surface. Neither end is visible or catchable, and there is nowhere for water
 to sit. It runs up the ridge's own centreline, so ridge, bore and nut share one
 datum and cannot be misaligned.
 
 M3 because the screw carries almost nothing — the ridge takes the moment, the
-snap takes the lifting, and this only has to resist a deliberate pull. It also
-has to thread *between* the two snap leaves on a 78 mm cover, which is what
-rules out anything larger.
+foot takes the lifting, and this only has to stop someone swinging the
+extension back out. It also has to sit *between* the two prism recesses, which
+is what rules out anything larger.
 
-`lock_len` drives the counterbore depth, so M3 × 30 or × 40 work by changing
-that one number.
+Only the HEAD's depth depends on `lock_len` — the tip always lands at the same
+place, because the counterbore subtracts the same length the tip adds back. So
+M3 × 16, × 25 or × 30 work by changing that one number; a shorter screw simply
+sits deeper up the bore.
 
-| The lock screw, on its axis | Leaf and bump, sliced — every layer looks like this |
+The step from the counterbore down to the shank is a cone at about 27° from
+vertical, not the 45° that is exactly the self-supporting limit and always prints
+rough. Making it gradual costs nothing: the head just seats a little further up
+it, which the derivation accounts for.
+
+| The lock screw, on its axis | The prisms in their recesses |
 |---|---|
-| ![](build/renders/sec_lock.png) | ![](build/renders/snap_sec.png) |
+| ![](build/renders/sec_lock.png) | ![](build/renders/hook_sec.png) |
 
 ## Bill of materials
 
@@ -137,7 +175,7 @@ that one number.
 | 2 | `pad_arm.stl` — the two sides | **TPU 95A** |
 | 1+ | any of `ext_helmet` / `ext_strap` / `ext_lock` / `ext_shelf` | PETG |
 | 2 | **M4 × 30** socket-cap screw + M4 nut | clamp |
-| *1* | *M3 × 35 socket-cap screw + M3 nut* | *optional extension lock* |
+| *1* | *M3 × 20 socket-cap screw + M3 nut* | *optional extension lock* |
 
 3 mm hex key for the clamp, 2.5 mm for the lock. Screw lengths come from the
 model, not from guessing — `make check` prints what the geometry needs, and the
@@ -166,11 +204,11 @@ STRUCTURAL prints perimeters slower and bonds layers noticeably better than
 SPEED, which matters at the extension's root. The cover is the only part that
 wants a brim — it stands 43 mm tall on a 29 mm footprint.
 
-The snap's leaf is **1.2 mm** thick, which at a 0.45 mm extrusion width is two
-perimeters plus a little gap fill rather than a whole number of lines. That is
-deliberate: the gap lands on the leaf's neutral axis, where bending stress is
-zero. Do not "tidy" it to 0.9 mm — the snap force goes as the cube of thickness
-and would drop from 19 N to 8 N.
+The prism recesses in the cover's underside are the only bridges on that part:
+**9.8 mm** of flat ceiling each, and they sit on the first layer so they are easy
+to inspect. That span is also why the prisms are small. If you ever want more
+grip, add a third prism rather than widening one — a wider recess is a longer
+bridge.
 
 ### Plates
 
@@ -185,9 +223,11 @@ arrange them individually.
 | `build/plates/tpu.3mf` | 2 × `pad`, 2 × `pad_arm` | 1 |
 
 The **coupon** is the whole interface with none of the mass: it checks the ridge
-fit, the snap force and the lock screw for a quarter of a real extension's
-plastic. Two numbers in this design are calculated rather than measured —
-`ridge_clear` at 0.25 mm and the snap's 19 N — and this is what settles both.
+fit, the hook engagement and the lock screw for a quarter of a real extension's
+plastic. Three numbers here are calculated rather than measured — `ridge_clear`
+at 0.45 mm, `prism_clear` at 0.3 mm and the prisms' 1.2 mm engagement — and this is what
+settles all three. Pay attention to whether the extension swings home without
+forcing and cannot then be lifted off.
 
 At 40 mm the whole set fits **one** MK4S bed: 238 × 176 mm of a 250 × 210 bed,
 ~28,900 mm² of footprint against 52,500. It needed two beds at 100 mm. The
@@ -206,8 +246,8 @@ Print each STL in the orientation it is exported in.
 | Part | Orientation | Why it works |
 |---|---|---|
 | U-bracket | Flat, post axis = Z | Screws load the arms in tension, along the layers. Bores are horizontal teardrops; nut slots bridge 10 mm. |
-| Cover | Standing on its bottom edge | Lips, rebates and the whole leaf spring are constant in Z. The snap bump's two faces are 45°, and the extension ridge grows straight up out of the finished top face. |
-| Extensions | On their side, width = Z | A pure extrusion, so bending runs along the layers and the snap groove spans the full width. Only the lock bore and the flange's nut pocket break the section, and both are small. |
+| Cover | Standing on its bottom edge | Lips and rebates are constant in Z, and the extension ridge grows straight up out of the finished top face. The two prism recesses are the only bridges: 9.8 mm each, on the first layer. |
+| Extensions | On their side, width = Z | Essentially a pure extrusion, so bending runs along the layers, and the foot and lightening holes are free by construction. The prisms are the one addition, ramping at 45° against print Z so they never begin in mid-air. |
 | Pads | Flat, studs up | Trivial. |
 
 ## Assembly
@@ -218,20 +258,24 @@ Print each STL in the orientation it is exported in.
 3. Slide the U onto the post from the front.
 4. Offer the cover up so its lips slide over the arm ends, start both M4 screws
    into the nuts, tighten alternately — snug, not hard.
-5. Drop the extension on from above — the ridge enters the groove in its
-   flange — and push down until the snap clicks.
+5. Hang the extension on the ridge — tilt its bottom out a few degrees, drop the
+   flange's groove over the ridge — then swing the bottom in until it sits flat.
+   The two tabs enter their pockets as it closes. It should need no force.
 6. *Optional:* slide the M3 nut into the slot in the extension's side, then run
-   the M3 × 35 screw up from underneath the cover into it. It disappears
+   the M3 × 20 screw up from underneath the cover into it. It disappears
    entirely — you will need a 2.5 mm hex key on a shaft, not a stubby.
 
 **To move it:** back both screws off a few turns, slide, retighten.
-**To swap an extension:** pull it firmly upward — the snap cams apart at ~1.9 kg.
+**To swap an extension:** press the bottom edge down about 1.2 mm to lift the
+prisms out of their recesses, pull it toward you, then lift it off the ridge. It
+cannot be pulled straight up — the foot grounds on the cover's underside after
+0.8 mm and the ridge needs 3.45 mm to clear.
 
 ## Extension interface
 
 
 Write a `*_profile()` in the (Y, Z) plane — Y outward from the post, Z up — and
-pass it to `extension()`. Slot, roof, flange, lock bore, nut pocket, snap groove,
+pass it to `extension()`. Slot, roof, flange, foot, lock bore, nut pocket, prisms,
 fillets and chamfers are all added for you — the profile is the only thing you
 write, and nothing you can put in it will need support.
 
@@ -246,25 +290,33 @@ Groove (in the flange)         the same, +0.25 mm all round, open downwards.
                                hard stop against the load's moment: 3.25 mm
                                thick, and it sees 0.82 MPa at 3 kg.
 Flange                         reaches 12 mm back over the cover, clearing its
-                               top by 0.15 mm, 13 mm deep to stack the ridge
-                               groove and the lock nut above it
+                               top by 0.15 mm at the front (the bearing face)
+                               and 0.8 mm behind the groove, so the extension
+                               can tilt 3.4 deg to get its hooks in without the
+                               back edge grounding. 13 mm deep to stack the
+                               ridge groove and the lock nut above it.
 Lock                           o3.5 blind bore up the ridge's own centreline —
                                ridge, bore and nut share one datum, so they
                                cannot be misaligned. Into an M3 nut above the
                                groove, its slot opening on the +X side face.
                                Omit it with ext_lock_hole = false.
-Snap    cover                  1.2 mm leaf, x = 6..21 (anchored outboard),
-                               2.2 mm flex slot behind, face set back 0.3 mm.
-                               Bump at x = 6.5..11, 1.0 mm proud, z = 5..10,
-                               both faces 45 deg
-        extension              groove across the full width, 1.25 mm deep,
-                               z = 4.75 .. 13.25
-Envelope                       56 wide x 9 thick x 53 tall; back face flat
-                               apart from the snap groove
+Foot    extension              part of the PROFILE, not interface: full width,
+                               6 mm back under the cover, 3.5 mm thick, its top
+                               0.4 mm clear of the cover's underside. Bored
+                               o7.3 on the centreline to pass the lock screw's
+                               head — a teardrop pointing at +X, because that is
+                               the print's Z on this part.
+Prisms  extension              two at x = +/-9, 6 wide x 4 deep x 1.6 tall on
+                               the foot's upper face, each ramping to zero over
+                               1.6 mm at both ends in X (= 45 deg against
+                               print Z). They engage 1.2 mm.
+        cover                  two recesses in the UNDERSIDE, 9.8 x 4.6 x 1.5
+Envelope                       70 wide x 9 thick x 53 tall, plus the foot below
 
-Every one of the extension's features is a POCKET — no undercuts anywhere.
-That is the whole trick: removed material can never start in mid-air, so
-nothing you subtract will ever need support.
+Every SUBTRACTION here is a pocket — no undercuts anywhere. That is the trick:
+removed material can never start in mid-air, so nothing you cut will need
+support. The prisms are the only addition, and they pay for themselves with a
+45 deg ramp at each end.
 ```
 
 Ideas for more: track pump cradle, bidon holder, glove pegs, drip rail, a second
@@ -277,21 +329,33 @@ cradle scaled to 70 % for a kid's helmet, shoe hooks, cable loop.
 * **`bbox.py`** — every part fits the MK4S bed
 * **`mesh.py`** — watertight, consistently wound, normals out
 * **`fitcheck.py`** — boolean interference between mating parts, by volume
+* **`hookcheck.py`** — whether the retention actually retains. The fit check
+  cannot answer this: with clearance on every face, tabs correctly seated and
+  tabs missing their pockets entirely both intersect the cover in nothing, so
+  both pass. This one *moves* the extension — raising it until it fouls, tilting
+  it until it does not — and asserts the two answers come out the right way
+  round.
 * **`strength.py`** — bending stress section by section
 * **`support.py`** — material that would print into thin air. Correctness and
   printability are different questions, and every other check only asks the
   first. This is the one that caught the dovetail that used to be in the joint.
-
-* **echoes** — screw lengths, cover-lip engagement, the snap force and leaf
-  stress computed as a beam, and the clearances the leaf has to thread between
+* **echoes** — screw lengths, cover-lip engagement, the hook's lift margin
+  against the ridge's, the pocket bridge span, and the tab ramp angle
 
 Run at the default `--reach 8` everything passes. Tightened to `--reach 1` only
 two things remain, both deliberate bridges: the captive-nut slots span 10 mm
 across the arm ends, and the ridge groove's closed ends span 2.2 mm. The cover
 and the pads are clean even at `--reach 1`.
 
-At **3 kg** (3× spec) the peak bending stress is **2.81 MPa — 5.6 % of PETG
-yield**, an 18× margin, and every joint downstream is in the same territory. What
+At **3 kg** (3× spec) the worst station along the cradle's arm reads **0.61 MPa,
+about 1 % of PETG yield** — the arm is 70 mm wide because the print orientation
+demands it, and that width is far more than the load needs.
+
+Treat `strength.py`'s headline "peak" line with suspicion, though: it reports the
+worst of all stations, and the first station sits on a thin sliver at the plate's
+back face whose second moment is meaningless. It has been quoting that artefact
+rather than the structural root all along — 3.19 MPa when the sliver was thin,
+0.69 MPa now the foot fills it. Read the table, not the headline. What
 actually limits the load is whether the TPU pads slip on the post, not part
 strength: if it ever sags, tighten the screws or fit softer pads.
 

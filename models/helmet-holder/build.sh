@@ -51,8 +51,8 @@ done
 echo "== the interface, close up"
 # the ridge standing on the cover's finished top face
 png ridge_iso --camera=0,0,0,55,0,25,300 -D 'part="cover"' -D 'ext_orient="install"'
-# a slice through the snap bump: leaf, bump and the extension's groove
-png snap_sec  --camera=0,0,0,0,0,0,400 -D 'cutaway="z"' -D 'cut_at=8' -D 'show_post=false'
+# a slice through a prism, sitting in its recess under the cover
+png hook_sec  --camera=0,0,0,90,0,90,400 -D 'cutaway="x"' -D 'cut_at=9' -D 'show_post=false' -D 'c_ext="#22c55e"'
 # the ridge sitting in the flange's groove, close in on the cover's top edge
 pngat joint_sec --camera=0,45,42,90,0,90,90 -D 'cutaway="x"' -D 'cut_at=0' \
                 -D 'show_post=false'

@@ -152,38 +152,31 @@ module cover_2d() {
                  [x_out, pd + plate_t], [-x_out, pd + plate_t]]);
 }
 
-// ---------- the snap's spring, on the cover ---------------------------------
-// A leaf cut out of the cover's own face, anchored outboard and reaching in, so
-// the bump sits near the free end where the leaf is compliant. Every cut here
-// runs the full height of the cover, which is what makes the flexure free to
-// print: the cross-section is identical on every layer.
+// ---------- the latch slot, in the cover's face ------------------------------
+// The extension's bump rests on this slot's floor. Full depth there, so the
+// extension cannot swing forward; then the slot ramps out to nothing at 45 deg
+// once the foot has swung under it.
 //
-// Written for the +x side; the caller mirrors it.
-module spring_cut() {
-    fy  = pd + plate_t;                 // the cover's front face
-    len = spring_x1 - spring_x0;
-    // 1. set the leaf's face back, so the extension bears on solid cover
-    translate([spring_x0, fy - spring_relief, -1])
-        cube([len, spring_relief + 1, u_h + 2]);
-    // 2. the slot it flexes into, running past the free end
-    translate([spring_x0 - spring_tip, fy - spring_relief - spring_t - spring_gap, -1])
-        cube([len + spring_tip, spring_gap, u_h + 2]);
-    // 3. cut right through at the inboard end, to free it
-    translate([spring_x0 - spring_tip, fy - spring_relief - spring_t - spring_gap, -1])
-        cube([spring_tip, spring_t + spring_gap + spring_relief + 1, u_h + 2]);
-}
-
-// The catch bump, standing proud of the cover's face on the leaf. Both faces are
-// 45 deg: the underside so it prints, the top as the lead-in.
-module spring_bump() {
-    fy = pd + plate_t;
-    d  = spring_relief + snap_proud;    // protrusion measured from the leaf's face
-    translate([bump_x0, fy - spring_relief, 0]) rotate([90, 0, 90])
-        linear_extrude(bump_x1 - bump_x0)
-            polygon([[0, snap_z0],
-                     [d, snap_z0 + d],                  // 45 deg catch face
-                     [d, snap_z0 + snap_h],
-                     [0, snap_z0 + snap_h + snap_ramp]]);
+// The ramp is the only ceiling this slot has, which is why — unlike a square
+// pocket — it needs no bridge and has no width limit. Drawn as a profile in
+// (y, z) and extruded across X.
+// Two shallow recesses in the cover's UNDERSIDE, for the prisms on the
+// extension's foot to drop into once it has swung under. That is what stops the
+// extension rotating back out on its own.
+//
+// Removed material, so nothing here begins in mid-air — but the recess's roof
+// is a flat ceiling spanning its width, i.e. a bridge, and that is what keeps
+// the prisms small. Widen the grip by adding prisms, never by widening one.
+module prism_recess() {
+    fy = pd + plate_t;                          // the cover's front face
+    W  = prism_w / 2 + prism_lead + prism_clear;
+    for (s = [-1, 1])
+        translate([s * prism_x - W,
+                   fy - prism_y - prism_d / 2 - prism_clear,
+                   -1])
+            cube([2 * W,
+                  prism_d + 2 * prism_clear,
+                  1 + prism_h - foot_gap + prism_clear]);
 }
 
 module cover_body() {
@@ -227,19 +220,21 @@ module cover_installed() {
         translate([0, pd + plate_t - lock_y, 0]) {
             translate([0, 0, -1]) cylinder(d = lock_hole, h = u_h + ridge_h + 2);
             translate([0, 0, -0.01]) cylinder(d = lock_cbore_d, h = lock_cbore_h);
-            // The step down to the bore is a 45 deg cone, not a flat annular
-            // ledge printed over air. The head lands on the cone and centres
-            // itself; at ~20 N of preload that line contact is plenty.
+            // The step down to the bore is a CONE, not a flat annular ledge
+            // printed over air — and a gradual one, about 27 deg from vertical
+            // rather than the 45 deg that is exactly the self-supporting limit.
+            // The head lands on it and centres itself; at ~20 N of preload that
+            // line contact is plenty. Making it gradual only means the head
+            // seats a little further up, which lock_seat_z already accounts for.
             translate([0, 0, lock_cbore_h - 0.01])
-                cylinder(d1 = lock_cbore_d, d2 = lock_hole,
-                         h = (lock_cbore_d - lock_hole) / 2);
+                cylinder(d1 = lock_cbore_d, d2 = lock_hole, h = lock_cone_h);
         }
-        // ext_snap gates the spring, and only here. Every extension carries the
-        // matching groove unconditionally — it costs nothing, so a snap cover
-        // and a plain cover both take any extension.
-        if (ext_snap) { spring_cut(); mirror([1, 0, 0]) spring_cut(); }
+        // ext_hook gates the slot, and only here. Every extension carries its
+        // foot and bump unconditionally — they cost nothing to print, and a
+        // plain cover simply has nothing for the bump to sit in, so any
+        // extension still fits any cover.
+        if (ext_hook) prism_recess();
     }
-    if (ext_snap) { spring_bump(); mirror([1, 0, 0]) spring_bump(); }
     }
 }
 

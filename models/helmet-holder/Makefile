@@ -20,10 +20,12 @@ DIMS_PART := dims
 FIT_SCAD  := tools/fitcheck.scad
 FIT_CASES := ext:extension vs cover,clamp:cover vs U-bracket,pad:TPU pad vs its pocket,pad_arm:TPU side pad vs its pocket
 
-# Cantilever bending, section by section, measured off the exported mesh.
+# Cantilever bending, section by section, measured off the exported mesh; and
+# the hook kinematics, which the boolean fit check provably cannot answer.
 # `=` not `:=`: PYTHON and OUT are defined by the include below, so this has to
 # expand at use time rather than here.
-EXTRA_CHECKS = $(PYTHON) ./tools/strength.py $(OUT)/ext_helmet.stl
+EXTRA_CHECKS = $(PYTHON) ./tools/hookcheck.py && \
+               $(PYTHON) ./tools/strength.py $(OUT)/ext_helmet.stl
 
 include $(REPO)/mk/model.mk
 

@@ -48,11 +48,23 @@ Then add a row to the root README's model table.
 - **A moment is a couple.** It needs tension at one end and compression at the
   other, not a grip along the whole joint. That realisation is what made the
   helmet holder's extension joint printable — see `models/helmet-holder/INTERFACE.md`.
-- **Put a flexure where the cross-section is constant.** A leaf spring on a part
-  that prints upright is identical on every layer and free; the same leaf on a
-  part that prints on its side begins in mid-air.
-- **Snap force goes as t³ and stress as t/a².** Shortening a leaf without
-  thinning it multiplies the stress fast. Compute it, don't eyeball it.
+- **Work out the assembly MOTION before designing the retention.** The helmet
+  holder had a leaf-spring snap for a long time and it never worked, because the
+  joint's hard stop at the top is a pivot: the extension can only arrive by
+  rotating about it, and the catch was shaped for a straight vertical drop. The
+  fix was a pair of tabs that engage on the arc. Ask "how does this part
+  actually move as it goes on?" first — the answer usually removes the need for
+  a flexure entirely.
+- **Prefer a geometric interlock to a spring.** Nothing to fatigue, nothing thin
+  to print. Two hard surfaces that overlap in the direction you want to block
+  beat any amount of clever cantilever.
+- **A clearance fit passes a boolean interference check by MISSING entirely.**
+  Correctly-engaged and completely-disengaged both intersect in zero volume. If
+  a feature is supposed to catch, test it by moving the part until it fouls —
+  see `models/helmet-holder/tools/hookcheck.py`.
+- **Ramp added material along the PRINT Z, not the model axis that looks right.**
+  A tab on a part printed on its side ramps in X; ramping it in Z looks correct
+  on screen and does nothing for the printer.
 - **Check the checker before believing a failure.** OpenSCAD's manifold backend
   guarantees manifold output; a mesh check that disagrees is usually welding
   vertices at the wrong tolerance, not finding a real defect.

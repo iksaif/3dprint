@@ -54,23 +54,33 @@ echo(str("lock nut: M", lock_d, " at z ", lock_nut_z, ", ",
          ext_h - lock_nut_top, " mm above  (both want > 3)"));
 echo(str("cover lip engagement: ", engage(post_d_max), " mm at the largest post, ",
          engage(post_d), " nominal, ", engage(post_d_min), " at the smallest"));
-// The leaf spring, as a beam: b = the cover's full height, because it runs all
-// the way up. E for printed PETG taken at a conservative 2000 MPa.
-E_petg   = 2000;
-leaf_L   = spring_x1 - spring_x0;
-leaf_a   = spring_x1 - (bump_x0 + bump_x1) / 2;   // bump, back from the anchor
-leaf_I   = u_h * pow(spring_t, 3) / 12;
-k_bump   = 3 * E_petg * leaf_I / pow(leaf_a, 3);  // N/mm, pushed at the bump
-f_snap   = k_bump * snap_proud;
-sigma    = f_snap * leaf_a * (spring_t / 2) / leaf_I;
-echo(str("snap leaf: ", leaf_L, " x ", spring_t, " mm, bump ", leaf_a,
-         " mm from the anchor"));
-echo(str("snap force: ", round(f_snap), " N to push it clear (~",
-         round(f_snap / 9.81 * 10) / 10, " kg pull to unclip), leaf at ",
-         round(sigma), " MPa  (PETG yields ~50)"));
-echo(str("leaf free end to the lock bore: ", (spring_x0 - spring_tip) - lock_hole / 2,
-         " mm  (want > 1)"));
-echo(str("leaf anchor to clamp screw:    ", (bolt_x - cbore_d / 2) - spring_x1,
+// The retention, as a budget of vertical travel. The whole design lives or dies
+// on this ordering: the latch must free BEFORE the foot grounds, and the foot
+// must ground BEFORE the ridge can escape. Get it wrong in the first place and
+// nothing comes apart; wrong in the second and it lifts straight off.
+echo(str("foot: full width x ", foot_reach, " x ", foot_t,
+         " mm under the cover, ", foot_gap, " mm clear of its underside; ",
+         "bottom sits ", -foot_z0, " mm below the bracket"));
+echo(str("foot lock clearance: o", lock_cbore_d + 1,
+         " mm teardrop, head is o", lock_cbore_d, "  (want bigger)"));
+echo(str("prisms: 2 x ", prism_w, " x ", prism_d, " x ", prism_h,
+         " mm at x +/-", prism_x, ", engaging ", prism_engage, " mm"));
+echo(str("prism recess bridge span: ", prism_w + 2 * prism_lead + 2 * prism_clear,
+         " mm  (want < 10; it is a flat ceiling in the cover's underside)"));
+echo(str("prism ramp: ", prism_h, " mm over ", prism_lead, " mm of X = ",
+         round(atan(prism_h / prism_lead)), " deg against print Z  (want <= 45)"));
+echo(str("swing to fit: ", round(hook_swing * 10) / 10,
+         " deg, set by the foot's ", foot_reach, " mm reach"));
+echo(str("ridge corner sweep at that swing: ",
+         round(sqrt(pow(ridge_w / 2, 2) + pow(ridge_h / 2, 2)) * hook_swing * PI / 180 * 100) / 100,
+         " mm  (clearance is ", ridge_clear, ")"));
+// The flange's rear edge dips as the extension swings in; the relief behind the
+// ridge has to be deeper than that dip or it grounds before the tabs seat.
+flange_dip = (flange_back - ridge_back) * tan(hook_swing);
+echo(str("flange rear dips ", round(flange_dip * 100) / 100, " mm on the swing, relief is ",
+         flange_relief_rear, " mm  (want relief > dip)"));
+echo(str("prism recess to the cover's side: ",
+         x_out - (prism_x + prism_w / 2 + prism_lead + prism_clear),
          " mm  (want > 3)"));
 
 // The ridge is the joint's hard stop. The load's moment is reacted as a couple
@@ -87,11 +97,40 @@ echo(str("groove walls: ", (flange_back - lock_y) - ridge_w / 2 - ridge_clear,
          " mm in front (the front one takes the moment; want > 3)"));
 echo(str("flange above the groove for the lock nut: ",
          ext_h - ridge_groove_top, " mm  (want > 8)"));
-echo(str("bump exposed beyond the extension edge: ",
-         ext_w / 2 - bump_x1, " mm  (want > 3, so it sits under the plate)"));
+echo(str("prism outer edge to the extension edge: ",
+         ext_w / 2 - (prism_x + prism_w / 2 + prism_lead), " mm  (want > 3)"));
 // Material left between the nut slot and the rebate floor
 echo(str("wall between nut slot and cover rebate: ",
          (x_out - rebate_d) - (bolt_x + (nut_af / cos(30)) / 2 + 0.5), " mm"));
+}
+
+// ---- Test-fit coupons ------------------------------------------------------
+// The interface and nothing else: a narrow slice through the middle of the real
+// cover and of an armless extension. Everything the joint depends on lives in
+// the middle — the ridge is 30 long, the prisms sit at x = +/-9, the lock bore
+// is on the centreline — so a 44 mm slice carries all of it and prints in a
+// fraction of the time.
+//
+// What is deliberately NOT here: the clamp screws and their counterbores, the
+// cover's lips and the arm rebates. Those are about gripping the post, not
+// about hanging an extension, and they have their own fit check.
+//
+// Both slices keep their real print orientation, so the bridges and overhangs
+// are the ones the real parts will have.
+fit_w = 44;
+module fit_slab() { translate([-fit_w / 2, -300, -300]) cube([fit_w, 600, 600]); }
+
+module fit_cover() { intersection() { cover("print"); fit_slab(); } }
+module fit_ext() {
+    translate([0, 0, fit_w / 2]) rotate([0, -90, 0])
+        intersection() { ext_stub("install"); fit_slab(); }
+}
+
+// Both coupons on one plate, each already in its own print orientation, spaced
+// so they can be sliced as a single job.
+module fit_plate() {
+    translate([0, -14, 0]) fit_cover();
+    translate([0,  22, 0]) fit_ext();
 }
 
 module assembly() {
@@ -157,4 +196,7 @@ module cut(o = [0, 0, 0]) {
     if (part == "ext_lock")   cut() ext_lock(ext_orient);
     if (part == "ext_shelf")  cut() ext_shelf(ext_orient);
     if (part == "ext_stub")   cut() ext_stub(ext_orient);
+    if (part == "fit_cover")  fit_cover();
+    if (part == "fit_ext")    fit_ext();
+    if (part == "fit")        fit_plate();
 }

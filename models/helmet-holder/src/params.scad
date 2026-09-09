@@ -133,14 +133,33 @@ ridge_w        = 5;     // along Y
 ridge_h        = 3;     // above the cover's top face
 ridge_back     = 6;     // ridge centre, measured back from the cover's outer face:
                         // half of plate_t, so the groove walls come out equal
-ridge_clear    = 0.25;
+// Raised from 0.25. The extension has to swing ~7 deg to get the latch bump out
+// of its slot, and at that angle the ridge's corners sweep 0.36 mm inside the
+// groove. Anything at or under that binds, and the extension will not come off.
+ridge_clear    = 0.45;
 ridge_lead     = 1.0;   // chamfer on the ridge's top, to guide it into the groove
 
-// The extension's width is NOT set by the post. A helmet is the same size
-// whichever post you hang it on, so this stayed broad: it spreads the load
-// across the EPS foam instead of denting a line into it, and it still lands
-// well inside the cover's 78 mm.
-ext_w          = 56;
+// Width is set by the clamp screws: the plate has to reach past their
+// counterbores so they are covered rather than sitting in the weather. The
+// bores span x 24.1..31.9, so 70 puts the edge 3.1 mm beyond them and leaves a
+// 4 mm reveal of cover each side.
+//
+// ONE width, not two. A narrower arm on a wider plate was tried and it does not
+// print: X is this part's print Z, so the arm's first layer would appear
+// complete and unsupported the moment the section widened out. Tapering does
+// not rescue it either — a gentle taper in plan is a near-vertical overhang in
+// the print, and reaching the cradle's 113 mm tip at 45 deg would need 104 mm
+// of width. The arm is the width of the plate, and the mass comes off with
+// lightening holes instead.
+ext_w          = 70;
+
+// Lightening holes run through the WIDTH, which is the one direction that is
+// free here: along X is along the print's Z, so they come out as plain vertical
+// holes and need no support at all, whatever their size or spacing.
+lighten        = true;
+lighten_wall   = 4;     // material left around each hole, measured on the
+                        // profile's local half-thickness
+lighten_min_d  = 7;     // below this a hole is more fuss than it is worth
 ext_plate_t    = 9;
 ext_roof       = 13;    // roof + flange: deep enough for the ridge groove AND the
                         // lock nut above it, stacked
@@ -148,59 +167,129 @@ ext_h          = u_h + ext_roof;
 flange_back    = plate_t;   // the flange reaches back exactly over the cover
 flange_relief  = 0.15;      // and clears its top, so the ridge alone sets the seat
 
+// Behind the ridge the flange is relieved further, because the extension has to
+// TILT to get its hooks in (see hook_swing). At ~3.4 deg the flange's rear edge,
+// 6 mm behind the pivot, dips about 0.35 mm — more than flange_relief — and it
+// would land on the cover's top and stop the swing before the tabs seated. The
+// front of the flange keeps the tighter relief and still carries the weight.
+flange_relief_rear = 1.0;
+
 // The groove in the flange's underside that the ridge drops into. Closed at
 // both ends in X: that is what stops the extension sliding sideways, and it
 // costs nothing to print because the closing is a short bridge over a pocket,
 // not an undercut.
 ridge_groove_top = u_h + flange_relief + ridge_h + ridge_clear;
 
-// ---- Snap retention --------------------------------------------------------
-// The spring lives on the COVER, not on the extension. A cantilever prints
-// without support only if it is identical on every layer; the cover prints
-// upright so a full-height leaf is exactly that, while the extension prints on
-// its side, where any finger occupying part of the width starts in mid-air.
+// ---- Hook retention: two tabs at the bottom, engaged by rotating ------------
+// There used to be a pair of leaf springs in the cover's face and a catch groove
+// on the extension. They are gone. They were hard to print at this scale — the
+// leaf had shrunk to 1.2 mm over a 15 mm span — and, more fundamentally, they
+// were solving the wrong problem: the ridge at the top is a PIVOT. Once it is in
+// the groove the extension's only remaining freedom is rotation about it, so the
+// bottom swings in along an arc. A catch bump designed to cam down a vertical
+// drop never gets a vertical drop.
 //
-// So: the cover gets two leaf springs cut into its face, each carrying a catch
-// bump. The extension gets a plain groove across its back face — removed
-// material, which can never be an unsupported island, and which keeps every
-// extension a pure 2D extrusion.
+// So retention now uses the rotation instead of fighting it. Hang the extension
+// on the ridge, swing the bottom in, and two small tabs on its back face enter
+// two small pockets in the cover.
 //
-// The leaves are anchored OUTBOARD and reach inboard, putting the bump near the
-// free end where the spring is compliant. Release is a firm pull upward: both
-// bump faces are 45 deg, which is what makes them print and what lets them cam
-// apart under a deliberate tug rather than locking permanently.
+// What actually locks it: once seated, lifting the extension off needs
+// ridge_h + ridge_clear of vertical travel to clear the ridge. The tabs have
+// only hook_play of room under their pockets' roofs, and hook_play is far less
+// than that — so the tabs hit the roof long before the ridge is free. Nothing
+// flexes and nothing wears; it is a hard geometric interlock.
 //
-// Shrinking the clamp squeezed this hard. The leaf can only run between the
-// central lock bore and the clamp screw, which is now ~15 mm rather than ~28,
-// and a short leaf strains far more for the same deflection: peak stress is
-// 3*E*d*t / (2*a^2), so halving the length quadruples the stress at the same
-// catch depth. That is why snap_proud came down with everything else — the
-// catch is shallower, and the spring is a detent rather than a latch. It only
-// has to stop the extension lifting; the ridge takes the load and the lock
-// screw is there when you want it permanent.
-ext_snap       = true;  // the groove on the EXTENSION; the cover is always ready
-snap_z0        = 5;     // bump's underside — the catch height
-snap_h         = 5;     // bump height before the lead-in ramp
-snap_ramp      = 3;     // lead-in above the bump
-snap_proud     = 1.0;   // how far the bump stands out from the cover's face
-snap_clear     = 0.25;
+// Getting it out is the same move backwards: lift a couple of mm, swing the
+// bottom out, unhook. No tool, no force.
+//
+// The printability of BOTH halves is what dictates their shapes:
+//
+//  * the POCKET is in the cover, which prints upright, so its roof is a flat
+//    ceiling anchored on both sides — a bridge. That caps the pocket's width at
+//    max_bridge_span, which is why there are two small tabs and not one wide one.
+//  * the TAB is on the extension, which prints on its side with X as print Z. A
+//    tab that simply started partway along X would begin in mid-air — the exact
+//    failure that banished the spring from this part in the first place. So each
+//    tab ramps up at 45 deg over hook_lead at both ends in X, which in the print
+//    is a 45 deg overhang and free.
+ext_hook       = true;  // build the foot, prisms and recesses at all
 
-// The leaf, in the cover's XY cross-section — identical at every height
-spring_x0      = 6;     // free end, inboard (clear of the central lock bore)
-spring_x1      = 21;    // anchored here, inboard of the clamp screw
-spring_t       = 1.2;   // leaf thickness — sets the snap force
-spring_gap     = 2.2;   // slot behind it to flex into
-spring_relief  = 0.3;   // leaf face sits behind the cover's face, so the
-                        // extension bears on solid cover and not on the spring
-spring_tip     = 2.5;   // slot that frees the leaf's inboard end
-bump_x0        = 6.5;   // bump sits under the extension, at the free end, which
-bump_x1        = 11;    // is what buys back some of the lost leaf length
+// ---- 1. The foot: what stops it lifting off --------------------------------
+// The extension is a C in section. Its flange goes over the cover's top, its
+// plate down the front face, and its foot reaches back UNDERNEATH the cover.
+// Lifting the extension drives the foot into the cover's underside, and it runs
+// out of room at foot_gap — less than the ridge needs to free itself. So the
+// extension cannot be pulled straight off however hard you pull. This is a hard
+// stop between two solid faces, not a detent.
+// Kept short deliberately. The foot has to swing out from under the cover, and
+// it sits ~46 mm below the ridge it pivots about, so every mm of reach costs
+// 1.25 deg of swing — which the ridge groove and the flange relief then have to
+// absorb. At 7 mm the swing is 8.7 deg and the ridge binds in its groove; at
+// 4 mm it is 5 deg and everything clears.
+// The foot is part of the extension's own 2D PROFILE, not a block stuck on the
+// back. It therefore runs the full width, side to side, and being a prism along
+// the part's print Z it is support-free by construction — no slope needed.
+// Only the prisms are interface; the foot is just the shape of the extension.
+foot_reach     = 6;     // how far the foot runs back under the cover
+foot_t         = 3.5;   // foot thickness
+foot_fillet    = 3;     // blend into the plate. Deliberately smaller than the
+                        // profile's own 6 mm fillet, which on a 3.5 mm foot
+                        // would swallow the face the prisms stand on.
+// Small, because the prisms stand on this face and have to reach up into the
+// cover: what actually engages is prism_h - foot_gap. It also means the foot
+// grounds on the cover's underside almost immediately, so the extension cannot
+// be lifted off at all.
+foot_gap       = 0.4;   // clearance from the foot's top to the cover's underside
+foot_z0        = -(foot_gap + foot_t);   // the foot's underside, below the bracket
 
-// The extension's half: a groove deep enough for the bump and tall enough to
-// clear its lead-in ramp as well.
-snap_groove_d  = snap_proud + snap_clear;
-snap_groove_z0 = snap_z0 - snap_clear;
-snap_groove_z1 = snap_z0 + snap_h + snap_ramp + snap_clear;
+// ---- 2. The prisms: what stops it swinging back out ------------------------
+// Two small wedges standing on the foot's UPPER face, dropping into two
+// recesses in the cover's underside. Once the foot has swung under the cover
+// they sit in their recesses and the extension will not swing back out on its
+// own; the recesses' walls are what it comes up against.
+//
+// This is a detent, not a lock, and that is deliberate — it is what makes the
+// thing removable by hand. To take the extension off you press the bottom edge
+// down and pull it toward you, which lifts the prisms out of their recesses far
+// enough to rotate; then the whole extension unhooks from the ridge. The finger
+// ledge under the plate is there to give a nail something to pull on.
+//
+// Printability: the extension prints on its side, X -> print Z, so a wedge that
+// simply appeared partway along X would start in mid-air. Each prism therefore
+// ramps up over prism_lead at both ends in X, and with prism_lead equal to
+// prism_h that is exactly 45 deg. The cover's recesses are plain pockets in its
+// underside; their ceilings bridge prism_w + 2*prism_lead, which is why the
+// prisms stay small.
+prism_x        = 9;     // the two prisms, either side of the centre
+prism_w        = 6;     // flat top length in X
+prism_h        = 1.6;   // height above the foot's top face
+prism_lead     = 1.6;   // = prism_h, so the ends are 45 deg against print Z
+prism_d        = 4;     // depth in Y
+prism_y        = 3;     // prism centre, back from the cover's front face
+prism_clear    = 0.3;
+prism_bond     = 0.6;   // how far the prism's root reaches down INTO the foot.
+                        // Butting added material on a face unions two solids
+                        // across a coincident plane: watertight, but it comes
+                        // out as separate shells. Overlap, always.
+
+// How far the prism actually stands into the cover's recess once seated. This
+// is the detent depth — the amount the bottom edge has to be pulled down by to
+// free it — so it wants to be small enough to do by hand.
+prism_engage   = prism_h - foot_gap;
+
+// A ledge under the front of the plate, to get a fingernail under when
+// releasing it.
+grip_h         = 2;
+grip_d         = 2.5;
+
+// The swing needed to bring the foot out from under the cover, as an angle
+// about the ridge. The foot is the furthest thing from that pivot, which is why
+// its reach is kept short: every mm of it costs about a degree and a quarter,
+// and the ridge groove and flange relief have to absorb that.
+//
+// The prisms do not add to it. They come out of their recesses by pressing the
+// bottom edge DOWN, not by swinging — that is the whole point of the release.
+hook_swing     = atan(foot_reach / (u_h + ridge_h + foot_gap));
 
 // ---- Optional extension lock (M3) -----------------------------------------
 // It enters from BELOW: up through the cover, into a nut buried in the
@@ -208,9 +297,8 @@ snap_groove_z1 = snap_z0 + snap_h + snap_ramp + snap_clear;
 // inside the flange, and the head is swallowed deep in the cover's bore.
 //
 // M3 because the screw carries almost nothing: the ridge takes the moment and
-// the snap takes the lifting. It only has to stop a deliberate pull. It also
-// has to fit BETWEEN the two snap leaves, which is what rules out anything
-// bigger now the cover is 78 mm rather than 175 mm wide.
+// the hook tabs take the lifting. It only has to stop someone deliberately
+// swinging the extension back out, and it sits between the two hook pockets.
 //
 // It runs straight up the middle of the ridge, so the ridge, the bore and the
 // nut all share one centreline and there is nothing to misalign.
@@ -224,9 +312,13 @@ lock_nut_h     = 2.4;
 lock_head_d    = 5.5;           // M3 socket cap
 lock_head_h    = 3.0;
 lock_cbore_d   = lock_head_d + 0.8;
-lock_len       = 35;            // the screw you actually buy: M3 x 35, a stock
-                                // length everywhere. 30 or 40 also work — change
-                                // this and the counterbore follows.
+lock_len       = 20;            // the screw you actually buy: M3 x 20.
+                                // Only the HEAD's depth depends on this. The tip
+                                // always lands at lock_nut_top + lock_engage,
+                                // because lock_cbore_h subtracts the same
+                                // lock_len that lock_tip_z adds back — so a
+                                // shorter screw just sits deeper up the bore,
+                                // and 16, 25 or 30 work by changing this alone.
 lock_engage    = 0.75;          // how far the tip runs past the nut
 
 // Where the nut sits, and therefore how deep the head has to be buried for a
@@ -234,8 +326,28 @@ lock_engage    = 0.75;          // how far the tip runs past the nut
 // It stacks above the ridge groove, centred in what flange is left over it.
 lock_nut_z     = (ridge_groove_top + ext_h) / 2;
 lock_nut_top   = lock_nut_z + lock_nut_h / 2;
-lock_cbore_h   = lock_nut_top + lock_engage - lock_len;   // head bears here
-lock_tip_z     = lock_cbore_h + lock_len;                 // must stay under ext_h
+
+// The bore does not step down to the shank, it CONES down — a flat annular
+// ledge would be printed over air. The cone was 45 deg, which is exactly the
+// self-supporting limit and always comes out rough. At 2 mm of rise per mm of
+// radius it is about 27 deg from vertical, well inside the limit and a cleaner
+// surface for the head to seat on.
+//
+// It also costs nothing to make it gradual, because the head simply seats
+// further up the cone: it stops where the cone has narrowed to lock_head_d,
+// and everything below is derived from that seat rather than from the cone's
+// start. The screw just goes in a fraction deeper.
+lock_cone_slope = 2;
+lock_cone_h     = (lock_cbore_d - lock_hole)   / 2 * lock_cone_slope;
+lock_seat_up    = (lock_cbore_d - lock_head_d) / 2 * lock_cone_slope;
+
+// Where the head's top face actually lands, and therefore where the tip does.
+// The old form put the seat at the cone's START and so reported the tip about
+// half a millimetre high — small, but it fed the "flange left above the tip"
+// margin, which is the number that says whether the screw bursts out of the top.
+lock_seat_z    = lock_nut_top + lock_engage - lock_len;
+lock_cbore_h   = lock_seat_z - lock_seat_up;    // where the cone starts
+lock_tip_z     = lock_seat_z + lock_len;        // must stay under ext_h
 
 // ---- Load case -------------------------------------------------------------
 // 3 kg hung at the helmet cradle's tip. Measured off the exported mesh by
