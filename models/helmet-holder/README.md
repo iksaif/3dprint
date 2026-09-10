@@ -64,7 +64,7 @@ you until the prisms clear, then swing out and lift off the ridge.
 |---|---|---|
 | **Ridge and groove** | Hard stop against the load's moment; its ends locate the extension sideways | Always on |
 | **Foot** | Wraps under the cover's bottom edge — stops it lifting off | `ext_hook` |
-| **Prisms** | Two 6 × 3 × 1.6 mm wedges on the foot, into recesses in the cover's underside — stop it rotating out | `ext_hook` |
+| **Prisms** | Two 6 × 2 × 1.6 mm wedges on the foot, into recesses in the cover's underside — stop it rotating out | `ext_hook` |
 | **M3 × 20 screw** | Up from inside the cover into a nut in the flange | `ext_lock_hole`, or just don't fit it |
 
 ### Why hooks and not a snap
@@ -313,15 +313,17 @@ Foot    extension              part of the PROFILE, not interface: full width,
                                o7.3 on the centreline to pass the lock screw's
                                head — a teardrop pointing at +X, because that is
                                the print's Z on this part.
-Prisms  extension              two at x = +/-9, 6 wide x 3 deep x 1.6 tall on
+Prisms  extension              two at x = +/-9, 6 wide x 2 deep x 1.6 tall on
                                the foot's upper face, each ramping to zero over
                                1.6 mm at both ends in X (= 45 deg against
                                print Z). They engage 1.2 mm.
-        cover                  two recesses in the UNDERSIDE, 9.8 x 3.6 x 1.5,
-                               set 1.7 mm in from the front face. That wall is
+        cover                  two recesses in the UNDERSIDE, 9.8 x 2.6 x 1.5,
+                               set 2.7 mm in from the front face. That wall is
                                what the prism bears on when the extension is
                                rotated out AND it sits on the first layer, so it
-                               is echoed by make check.
+                               is echoed by make check. The prism is deliberately
+                               shallow: the grip is width x engagement, so depth
+                               buys nothing and spending it on the wall is free.
 Envelope                       70 wide x 9 thick x 53 tall, plus the foot below
 
 Every SUBTRACTION here is a pocket — no undercuts anywhere. That is the trick:

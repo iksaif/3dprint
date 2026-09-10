@@ -269,18 +269,25 @@ prism_x        = 9;     // the two prisms, either side of the centre
 prism_w        = 6;     // flat top length in X
 prism_h        = 1.6;   // height above the foot's top face
 prism_lead     = 1.6;   // = prism_h, so the ends are 45 deg against print Z
-// prism_y sets how much cover is left OUTBOARD of the recess, and that little
-// wall is the one that does the work: rotating the extension out drives the
-// prism forward against it. At prism_y = 3 with prism_d = 4 it came out 0.7 mm
-// thick over 1.5 mm of height, on the first layer — about one and a half
-// extrusions wide, fragile to print and fragile in use.
+// prism_y decides how much cover is left between the recess and the front face
+// — the face you look at — and THAT wall is the one that works: rotating the
+// extension out drives the prism forward against it. At prism_y = 3 with
+// prism_d = 4 it came out 0.7 mm thick over 1.5 mm of height, on the first
+// layer: about one and a half extrusions, poor to print and poor in use.
 //
-// Moving the recess 1 mm inboard and taking 1 mm off the prism's depth to pay
-// for it leaves 1.7 mm there, and the foot still has 1 mm of material behind
-// the prism. What it costs is bearing area on the detent, which was never the
-// limit — the foot is what actually holds the extension on.
-prism_d        = 3;     // depth in Y
-prism_y        = 3.5;   // prism centre, back from the cover's front face
+// Pushing the recess back costs nothing worth having. The detent's grip is
+// prism_w x its engagement — 6 x 1.2 = 7.2 mm^2 — and prism_d appears nowhere
+// in that. The depth only decides where the recess sits fore and aft. So the
+// prism is made shallow and pushed back until the wall is properly thick:
+//
+//   prism_y 3.0, prism_d 4  ->  0.7 mm of wall  (1.6 extrusions)
+//   prism_y 3.5, prism_d 3  ->  1.7 mm          (3.8)
+//   prism_y 4.0, prism_d 2  ->  2.7 mm          (6.0)   <- here
+//
+// The floor on prism_d is the foot behind it: prism_y + prism_d/2 must stay
+// clear of foot_reach, which leaves 1 mm at these numbers.
+prism_d        = 2;     // depth in Y — contributes nothing to the grip
+prism_y        = 4;     // prism centre, back from the cover's front face
 prism_clear    = 0.3;
 prism_bond     = 0.6;   // how far the prism's root reaches down INTO the foot.
                         // Butting added material on a face unions two solids
