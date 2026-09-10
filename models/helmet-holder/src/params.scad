@@ -161,7 +161,12 @@ lighten_wall   = 4;     // material left around each hole, measured on the
                         // profile's local half-thickness
 lighten_min_d  = 7;     // below this a hole is more fuss than it is worth
 ext_plate_t    = 9;
-ext_roof       = 13;    // roof + flange: deep enough for the ridge groove AND the
+// Raised from 13. What forced it: with the nut pinned above the groove, the
+// flange's remaining height IS the room the screw's tip has to overrun into.
+// At 13 there was 1.0 mm of it and then a 1.75 mm wall — so as soon as the head
+// settled into the plastic at all, the tip drove into that wall and bulged it.
+// 15 gives 2.5 mm of overrun and a 2.25 mm wall behind it.
+ext_roof       = 15;    // roof + flange: deep enough for the ridge groove AND the
                         // lock nut above it, stacked
 ext_h          = u_h + ext_roof;
 flange_back    = plate_t;   // the flange reaches back exactly over the cover
@@ -264,8 +269,18 @@ prism_x        = 9;     // the two prisms, either side of the centre
 prism_w        = 6;     // flat top length in X
 prism_h        = 1.6;   // height above the foot's top face
 prism_lead     = 1.6;   // = prism_h, so the ends are 45 deg against print Z
-prism_d        = 4;     // depth in Y
-prism_y        = 3;     // prism centre, back from the cover's front face
+// prism_y sets how much cover is left OUTBOARD of the recess, and that little
+// wall is the one that does the work: rotating the extension out drives the
+// prism forward against it. At prism_y = 3 with prism_d = 4 it came out 0.7 mm
+// thick over 1.5 mm of height, on the first layer — about one and a half
+// extrusions wide, fragile to print and fragile in use.
+//
+// Moving the recess 1 mm inboard and taking 1 mm off the prism's depth to pay
+// for it leaves 1.7 mm there, and the foot still has 1 mm of material behind
+// the prism. What it costs is bearing area on the detent, which was never the
+// limit — the foot is what actually holds the extension on.
+prism_d        = 3;     // depth in Y
+prism_y        = 3.5;   // prism centre, back from the cover's front face
 prism_clear    = 0.3;
 prism_bond     = 0.6;   // how far the prism's root reaches down INTO the foot.
                         // Butting added material on a face unions two solids
@@ -320,26 +335,34 @@ lock_len       = 20;            // the screw you actually buy: M3 x 20.
                                 // shorter screw just sits deeper up the bore,
                                 // and 16, 25 or 30 work by changing this alone.
 lock_engage    = 0.75;          // how far the tip runs past the nut
+lock_tip_over  = 2.5;           // and how much EMPTY bore lies beyond that, so
+                                // an over-tightened screw runs out of thread
+                                // rather than driving its point into the
+                                // flange's end wall
 
 // Where the nut sits, and therefore how deep the head has to be buried for a
 // standard length to come out right. Derived, so the BOM cannot drift.
 // It stacks above the ridge groove, centred in what flange is left over it.
-lock_nut_z     = (ridge_groove_top + ext_h) / 2;
+// The nut sits a fixed distance ABOVE THE GROOVE, not halfway up the flange.
+// Halfway is what it was, and it meant the room left for the screw's tip rose
+// and fell with ext_roof instead of being something you could set. Pinning it
+// to the groove leaves the whole rest of the flange as tip clearance.
+lock_nut_below = 3.5;           // flange between the groove and the nut
+lock_nut_z     = ridge_groove_top + lock_nut_below + lock_nut_h / 2;
 lock_nut_top   = lock_nut_z + lock_nut_h / 2;
 
-// The bore does not step down to the shank, it CONES down — a flat annular
-// ledge would be printed over air. The cone was 45 deg, which is exactly the
-// self-supporting limit and always comes out rough. At 2 mm of rise per mm of
-// radius it is about 27 deg from vertical, well inside the limit and a cleaner
-// surface for the head to seat on.
+// The head seats on a FLAT annular ledge, not on a cone.
 //
-// It also costs nothing to make it gradual, because the head simply seats
-// further up the cone: it stops where the cone has narrowed to lock_head_d,
-// and everything below is derived from that seat rather than from the cone's
-// start. The screw just goes in a fraction deeper.
-lock_cone_slope = 2;
-lock_cone_h     = (lock_cbore_d - lock_hole)   / 2 * lock_cone_slope;
-lock_seat_up    = (lock_cbore_d - lock_head_d) / 2 * lock_cone_slope;
+// It was a cone, on the reasoning that a flat ledge would be printed over air.
+// That was over-cautious: the ledge is only (lock_cbore_d - lock_hole) / 2 =
+// 1.4 mm wide, a trivial overhang anchored all the way round its outer edge.
+// And the cone's cost is severe — the head touches it on a LINE rather than a
+// face, so a steel head under any torque at all digs straight into the PETG and
+// the screw walks in further than it should.
+//
+// Flat, the head bears on about 14 mm^2. At a sane snug (~100 N) that is 7 MPa,
+// which PETG holds; the cone was effectively unbounded.
+lock_seat_up   = 0;             // flat: the head seats where the ledge is
 
 // Where the head's top face actually lands, and therefore where the tip does.
 // The old form put the seat at the cone's START and so reported the tip about

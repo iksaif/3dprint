@@ -68,8 +68,13 @@ module ridge_groove(w = ext_w) {
 // so it shares the ridge's centreline — the same datum the cover's bore uses,
 // so the two are collinear by construction.
 module lock_pocket(w = ext_w) {
+    // The blind bore runs lock_tip_over PAST where the tip is meant to stop.
+    // That overrun is what stops an over-tightened screw driving its point into
+    // the flange's end wall and bulging it — which is exactly what 1 mm of it
+    // failed to prevent on the first print.
     translate([0, -lock_y, ridge_groove_top - 1])
-        cylinder(d = lock_hole, h = (lock_tip_z + 1) - (ridge_groove_top - 1));
+        cylinder(d = lock_hole,
+                 h = (lock_tip_z + lock_tip_over) - (ridge_groove_top - 1));
     // Nut slot, opening on the +X side face — which points straight up while the
     // extension prints on its side, so it needs no support.
     translate([0, -lock_y, lock_nut_z]) hull() {

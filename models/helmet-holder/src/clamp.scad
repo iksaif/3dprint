@@ -220,14 +220,13 @@ module cover_installed() {
         translate([0, pd + plate_t - lock_y, 0]) {
             translate([0, 0, -1]) cylinder(d = lock_hole, h = u_h + ridge_h + 2);
             translate([0, 0, -0.01]) cylinder(d = lock_cbore_d, h = lock_cbore_h);
-            // The step down to the bore is a CONE, not a flat annular ledge
-            // printed over air — and a gradual one, about 27 deg from vertical
-            // rather than the 45 deg that is exactly the self-supporting limit.
-            // The head lands on it and centres itself; at ~20 N of preload that
-            // line contact is plenty. Making it gradual only means the head
-            // seats a little further up, which lock_seat_z already accounts for.
-            translate([0, 0, lock_cbore_h - 0.01])
-                cylinder(d1 = lock_cbore_d, d2 = lock_hole, h = lock_cone_h);
+            // The counterbore simply stops, leaving a FLAT annular ledge for the
+            // head. It used to cone down instead, to avoid printing a ledge over
+            // air — but the ledge is 1.4 mm wide and anchored right round its
+            // outer edge, which is nothing, while the cone gave the head LINE
+            // contact and let it dig into the PETG under any real torque.
+            // Nothing to add here: the cylinder above ends at lock_cbore_h and
+            // that end face is the seat.
         }
         // ext_hook gates the slot, and only here. Every extension carries its
         // foot and bump unconditionally — they cost nothing to print, and a

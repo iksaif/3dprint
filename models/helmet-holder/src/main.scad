@@ -82,6 +82,14 @@ echo(str("flange rear dips ", round(flange_dip * 100) / 100, " mm on the swing, 
 echo(str("prism recess to the cover's side: ",
          x_out - (prism_x + prism_w / 2 + prism_lead + prism_clear),
          " mm  (want > 3)"));
+// The wall left OUTBOARD of the recess, between it and the cover's front face.
+// This is the face the prism bears on when the extension is rotated out, and it
+// sits on the first layer, so it has to be worth printing as well as strong.
+echo(str("recess outer wall: ", prism_y - prism_d / 2 - prism_clear,
+         " mm thick x ", prism_h - foot_gap + prism_clear,
+         " mm tall  (want > 1.5, it is what the prism pushes against)"));
+echo(str("foot left behind the prism: ", foot_reach - (prism_y + prism_d / 2),
+         " mm  (want > 0.5)"));
 
 // The ridge is the joint's hard stop. The load's moment is reacted as a couple
 // over the extension's height: tension at the top, taken by the ridge, and
