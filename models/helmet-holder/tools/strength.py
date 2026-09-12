@@ -1,10 +1,28 @@
 #!/usr/bin/env python3
 """Bending check for an extension, measured from the exported mesh.
 
-Each extension is a prism: a 2D side profile extruded `w` wide. So its section
-at any distance from the cover is (that profile's z-extent) x w. This walks the
-profile out from the root, and at each station computes the real second moment
-of area and the peak bending stress from the cantilever moment.
+An extension's section at distance y from the cover is (the side profile's
+z-extent at y) x (the part's width at y). This walks out from the root and at
+each station computes the real second moment of area and the peak bending stress
+from the cantilever moment.
+
+Both of those are read as SILHOUETTES — every triangle projected onto the plane
+in question and the spans merged. The union of the projections of a closed
+surface is the projection of the solid, so this is the true outline.
+
+That is not how it used to work, and the difference matters twice:
+
+  * it used to read the profile off the single outermost side FACE. That face is
+    the profile eroded by the edge chamfer, so every section came out slightly
+    small and, within a chamfer of the back face, came out as two thin slivers
+    with an absurd second moment. A station floor was bolted on to hide it.
+  * worse, that face only exists where the part is at full width. ext_light
+    sweeps its width from 44 mm to 10, so the outermost face survives only over
+    the interface — the tool read a 20 mm stub, found no bending in it and
+    reported a safety factor of 3839x for the one part that had material taken
+    out of it. A check that cannot fail is not a check.
+
+Width is therefore measured per station too, not taken as the bounding box.
 
 Reads the STL in PRINT orientation (as exported) and maps it back:
     print (px, py, pz) -> installed (x, y, z) = (pz - w/2, py, -px)
@@ -49,31 +67,28 @@ def read_tris(path):
     return out
 
 
-def side_profile(tris):
-    """The 2D (y, z) profile, taken from one flat side face of the prism.
+def silhouettes(tris):
+    """Every triangle projected twice: side view (y, z) and plan view (y, x).
 
-    The extrusion axis is the installed X, which the print rotation maps to the
-    print Z — so the flat side faces are the ones whose normal is +/-Z here.
-
-    CAVEAT, and it matters: the part is built with chamfered_extrude, so this
-    outermost face is the profile ERODED by the edge chamfer, not the profile
-    itself. Every section read from it is therefore a little small, which is
-    conservative and fine — except close to a face, where the erosion is the
-    whole story. See the station floor in main().
+    The side view gives the profile's height at a station; the plan view gives
+    the part's width there. Neither is a single face — both are the whole mesh
+    flattened, so a part whose width varies is described correctly and the edge
+    chamfer erodes nothing.
     """
     zs = [v[2] for t in tris for v in t[1:]]
     w = max(zs) - min(zs)
-    hi = max(zs)
-    faces = []
-    for nrm, a, b, c in tris:
-        if abs(nrm[2]) > 0.99 and all(abs(v[2] - hi) < 1e-3 for v in (a, b, c)):
-            # print (px, py, pz) -> installed (y, z) = (py, -px)
-            faces.append([(v[1], -v[0]) for v in (a, b, c)])
-    return faces, w
+    # print (px, py, pz) -> installed (x, y, z) = (pz - w/2, py, -px)
+    side = [[(v[1], -v[0]) for v in t[1:]] for t in tris]
+    plan = [[(v[1], v[2] - w / 2) for v in t[1:]] for t in tris]
+    return side, plan, w
 
 
-def z_spans(faces, y):
-    """Z intervals covered by the profile at station y."""
+def spans_at(faces, y):
+    """Intervals of the second coordinate covered at station y.
+
+    Merging overlaps is what turns a pile of projected triangles into the
+    silhouette; the gaps that survive are real holes in the section.
+    """
     segs = []
     for tri in faces:
         zs = []
@@ -95,6 +110,10 @@ def z_spans(faces, y):
     return merged
 
 
+def total(spans):
+    return sum(hi - lo for lo, hi in spans)
+
+
 def section(spans, w):
     """Area, centroid, I about the horizontal neutral axis, extreme fibre."""
     a = sum(hi - lo for lo, hi in spans) * w
@@ -108,14 +127,16 @@ def section(spans, w):
 
 def main(path):
     tris = read_tris(path)
-    faces, w = side_profile(tris)
-    ys = [p[0] for f in faces for p in f]
+    side, plan, w = silhouettes(tris)
+    ys = [p[0] for f in side for p in f]
     y0, y1 = min(ys), max(ys)
     force = LOAD_KG * G                       # N, hung at the tip
-    print(f"{path}   width {w:.0f} mm   reach {y1 - y0:.0f} mm   "
+    # Reach is measured from the mounting face, not across the bounding box:
+    # the flange and foot behind y = 0 are joint, not cantilever.
+    print(f"{path}   width {w:.0f} mm max   reach {y1:.0f} mm   "
           f"load {LOAD_KG:.1f} kg at the tip")
-    print(f"{'y (mm)':>8} {'height':>8} {'I (mm^4)':>12} {'M (N.mm)':>10} "
-          f"{'sigma':>8}  {'util':>6}")
+    print(f"{'y (mm)':>8} {'height':>8} {'width':>8} {'I (mm^4)':>12} "
+          f"{'M (N.mm)':>10} {'sigma':>8}  {'util':>6}")
     # Where to start walking.
     #
     # The flange and the foot (y < 0) hang off the back and carry no bending, so
@@ -129,13 +150,17 @@ def main(path):
     # This was the "peak bending stress at y = 0" line for the whole life of
     # this tool: 3.19 MPa when the sliver was thin, 0.69 MPa once the foot grew
     # and filled it. Neither number was the structural root.
-    chamfer = P.get("chamfer", 0)
-    y0 = max(y0, chamfer + 0.5)
+    #
+    # Now that the profile is a silhouette, the chamfer erodes nothing and the
+    # floor is simply the mounting face: the flange and the foot behind it hang
+    # off the back of the joint and carry no cantilever moment.
+    y0 = max(y0, 0.5)
     worst = (0, None)
     for k in range(0, 21):
         y = y0 + (y1 - y0) * k / 20 * 0.97
-        sp = z_spans(faces, y)
-        s = section(sp, w)
+        sp = spans_at(side, y)
+        bw = total(spans_at(plan, y))         # the width right here, not the bbox
+        s = section(sp, bw) if bw > 0 else None
         if not s:
             continue
         a, zbar, i, c = s
@@ -144,8 +169,8 @@ def main(path):
         util = sigma / PETG_YIELD
         if sigma > worst[0]:
             worst = (sigma, y)
-        h = sum(hi - lo for lo, hi in sp)
-        print(f"{y:8.1f} {h:8.1f} {i:12.0f} {m:10.0f} {sigma:8.2f} {util:6.1%}")
+        print(f"{y:8.1f} {total(sp):8.1f} {bw:8.1f} {i:12.0f} "
+              f"{m:10.0f} {sigma:8.2f} {util:6.1%}")
     print(f"\npeak bending stress {worst[0]:.2f} MPa at y = {worst[1]:.0f} mm "
           f"({worst[0] / PETG_YIELD:.1%} of PETG yield, {PETG_YIELD:.0f} MPa)")
     print(f"safety factor {PETG_YIELD / worst[0]:.0f}x at {LOAD_KG:.0f} kg "
