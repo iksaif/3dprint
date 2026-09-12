@@ -113,12 +113,16 @@ module ext_keep_2d() {
              [-flange_back, u_h + flange_relief_rear], [0, u_h + flange_relief_rear]]);
 }
 
-module extension(orient = "install", w = ext_w, holes = []) {
+// tip_y: how far out the profile reaches, so the width taper knows where the
+// tip is. Zero means no taper.
+// sweep: [y0, y1, w_tip] to replace the short tip taper with a full-length
+// cosine sweep. Overrides tip_y when given. See ext_sweep_2d.
+module extension(orient = "install", w = ext_w, holes = [], tip_y = 0, sweep = []) {
     if (orient == "print")
         translate([0, 0, w / 2]) rotate([0, -90, 0])
-            extension_installed(w, holes) children();
+            extension_installed(w, holes, tip_y, sweep) children();
     else
-        extension_installed(w, holes) children();
+        extension_installed(w, holes, tip_y, sweep) children();
 }
 // Lightening holes, bored through the extension's WIDTH.
 //
@@ -145,24 +149,90 @@ module lighten_holes(pts, w = ext_w) {
     }
 }
 
-module extension_installed(w = ext_w, holes = []) {
+// The width envelope: full width everywhere except the last tip_taper_len of
+// the arm, where it closes in at tip_taper_rate per mm of length.
+//
+// The rate is the whole point. Narrowing IS the printable direction here, but
+// only if it happens fast enough. Climbing from the bed, every layer reveals a
+// fresh strip of the narrower part, dx / tip_taper_rate long; at 1.0 that strip
+// is exactly one layer wide, i.e. 45 deg. Slacken it and the tip prints in air.
+module ext_tip_2d(tip_y) {
+    y0 = tip_y - tip_taper_len;
+    W  = ext_w / 2;
+    Wt = W - tip_taper_len * tip_taper_rate;
+    polygon([[-W, -900], [W, -900], [W, y0], [Wt, tip_y], [Wt, tip_y + 30],
+             [-Wt, tip_y + 30], [-Wt, tip_y], [-W, y0]]);
+}
+
+// The other width envelope: instead of a short chamfer at the tip, the width
+// sweeps the whole way from the end of the interface to the toe.
+//
+// This is the shape the 45 deg rule refuses, and it is the reason ext_light
+// prints on support. What it buys is a single continuous line: a RAISED COSINE
+// has zero slope at both ends, so the arm grows out of the plate with no crease
+// and closes at the toe with no point. The same span done as a straight line
+// shows a corner at each end and reads as a machined chamfer, not as a fin.
+//
+// Both envelopes are prisms along model Z and get intersected with the finished
+// body, so — like the tip taper above — the swept faces meet the profile's top
+// and bottom as sharp silhouette edges rather than chamfered ones. That is a
+// consequence of doing this as an intersection and it is the same on both.
+function light_hw(t, w0, w1) = (w1 + (w0 - w1) * (1 + cos(180 * t)) / 2) / 2;
+
+module ext_sweep_2d(y0, y1, w0, w1, n = light_steps) {
+    edge = [for (i = [0 : n])
+                let (t = i / n)
+                [light_hw(t, w0, w1), y0 + (y1 - y0) * t]];
+    polygon(concat([[w0 / 2, -900]],
+                   edge,
+                   [[w1 / 2, 900], [-w1 / 2, 900]],
+                   [for (i = [n : -1 : 0]) [-edge[i][0], edge[i][1]]],
+                   [[-w0 / 2, -900]]));
+}
+
+// Whichever envelope applies, ALWAYS as a shape — including the case where no
+// envelope applies at all, which comes back as a rectangle big enough to keep
+// everything.
+//
+// That last branch is not tidiness. This gets intersected with the finished
+// body, and an `if` with no matching branch does not vanish from an
+// intersection() — it contributes an empty child, and an intersection with an
+// empty child is empty. Writing it as `if (taper) ...` with nothing else was
+// enough to silently reduce ext_stub, and with it the whole test coupon, to
+// nothing. Keep the intersection's arity fixed and put the choice inside.
+module ext_env_2d(w, tip_y, sweep) {
+    if (len(sweep) == 3) ext_sweep_2d(sweep[0], sweep[1], w, sweep[2]);
+    else if (ext_tip_taper && tip_y > 0) ext_tip_2d(tip_y);
+    else square([w + 400, 1800], center = true);
+}
+
+// Either envelope, as a solid tall enough to swallow the whole part.
+module ext_envelope() {
+    translate([0, 0, foot_z0 - 40])
+        linear_extrude(ext_h - foot_z0 + 80) children();
+}
+
+module extension_installed(w = ext_w, holes = [], tip_y = 0, sweep = []) {
     difference() {
-        union() {
-            ext_body(w) union() {
-                // the profile the caller wrote, held inside the keep-out
-                intersection() {
-                    smooth2d(6, 2) union() { ext_plate_2d(); children(); }
-                    ext_keep_2d();
+        intersection() {
+            union() {
+                ext_body(w) union() {
+                    // the profile the caller wrote, held inside the keep-out
+                    intersection() {
+                        smooth2d(6, 2) union() { ext_plate_2d(); children(); }
+                        ext_keep_2d();
+                    }
+                    // the foot, outside the keep-out because it is meant to
+                    // cross the back face — and outside the 6 mm smoothing,
+                    // which is far too big a fillet for it
+                    if (ext_hook) ext_foot_2d();
                 }
-                // the foot, outside the keep-out because it is meant to
-                // cross the back face — and outside the 6 mm smoothing,
-                // which is far too big a fillet for it
-                if (ext_hook) ext_foot_2d();
+                // The prisms are the only thing here that is NOT part of the
+                // profile: they are interface, they sit proud of the foot's
+                // face, and they are what has to earn its keep against the print.
+                if (ext_hook) foot_prisms(w);
             }
-            // The prisms are the only thing here that is NOT part of the
-            // profile: they are interface, they sit proud of the foot's face,
-            // and they are what has to earn its keep against the print.
-            if (ext_hook) foot_prisms(w);
+            ext_envelope() ext_env_2d(w, tip_y, sweep);
         }
         ext_slot(w);
         if (lighten) lighten_holes(holes, w);
@@ -272,14 +342,39 @@ module ext_foot_2d() {
 // tapered shaft with a bulb on the end.
 // One list, used twice: stroke() draws the sweep from it, and lighten_holes()
 // bores the arm out from the same stations. They cannot drift apart.
-function helmet_pts() = [[9, 22, 13], [38, 26, 11], [66, 30, 9.5],
-                         [86, 37, 8.5], [93, 48, 8], [88, 58, 7]];
+function helmet_pts() = [[9, 22, 7.5], [38, 26, 6.5], [66, 30, 6],
+                         [86, 37, 5.5], [93, 48, 5.5], [88, 58, 5]];
 module helmet_profile() {
     stroke(helmet_pts());
     polygon([[4, 4], [4, 30], [42, 22]]);        // gusset carrying the root in
 }
+function pts_reach(pts) = max([for (p = pts) p[0] + p[2]]);
 module ext_helmet(orient = "install") {
-    extension(orient, ext_w, inner_pts(helmet_pts())) helmet_profile();
+    extension(orient, ext_w, inner_pts(helmet_pts()), pts_reach(helmet_pts()))
+        helmet_profile();
+}
+
+// ---- 1b. Helmet cradle, light ----------------------------------------------
+// The same cradle, same side profile, same interface — but the width sweeps from
+// the full plate at the end of the interface down to light_tip_w at the toe,
+// instead of holding 44 mm the whole way and chamfering the last 14.
+//
+// Deliberately the SAME helmet_pts() as ext_helmet, so the two cannot drift into
+// being different cradles. The only difference between them is the envelope.
+//
+// It needs support, and that is the trade being made rather than an oversight:
+// the sweep's steepest point is around 17 deg off the bed, so the arm's whole
+// underside is a shallow overhang. Print it with supports on, and keep ext_helmet
+// for when that is not wanted. It is named in SUPPORT_EXEMPT in the Makefile —
+// the no-support rule still fails the build for everything else.
+//
+// No lightening holes are asked for and none would appear anyway: at 10-13 mm of
+// section the stations are all under lighten_min_d. The width is doing that job
+// here.
+module ext_light(orient = "install") {
+    extension(orient, ext_w, [], 0,
+              [light_from, pts_reach(helmet_pts()), light_tip_w])
+        helmet_profile();
 }
 
 // ---- 2. Strap hook ---------------------------------------------------------
@@ -290,7 +385,8 @@ module strap_profile() { stroke(strap_pts()); }
 // lighten_min_d and lighten_holes skips it. That is the guard doing its job,
 // not an omission.
 module ext_strap(orient = "install") {
-    extension(orient, ext_w, inner_pts(strap_pts())) strap_profile();
+    extension(orient, ext_w, inner_pts(strap_pts()), pts_reach(strap_pts()))
+        strap_profile();
 }
 
 // ---- 3. Lock / light hook --------------------------------------------------
@@ -299,7 +395,8 @@ function lock_pts() = [[8, 24, 8], [42, 22, 7], [48, 4, 7],
                        [62, -2, 7], [72, 10, 8]];
 module lock_profile() { stroke(lock_pts()); }
 module ext_lock(orient = "install") {
-    extension(orient, ext_w, inner_pts(lock_pts())) lock_profile();
+    extension(orient, ext_w, inner_pts(lock_pts()), pts_reach(lock_pts()))
+        lock_profile();
 }
 
 // ---- 4. Shelf --------------------------------------------------------------
@@ -311,7 +408,8 @@ module shelf_profile() {
     polygon([[9, 8], [9, 40], [46, 34]]);        // gusset under the root
 }
 module ext_shelf(orient = "install") {
-    extension(orient, ext_w, inner_pts(shelf_pts())) shelf_profile();
+    extension(orient, ext_w, inner_pts(shelf_pts()), pts_reach(shelf_pts()))
+        shelf_profile();
 }
 
 // ---- Test coupon -----------------------------------------------------------

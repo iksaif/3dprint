@@ -2,13 +2,16 @@
 
 Parametric OpenSCAD models for FDM printing, plus the shared tooling that checks
 them. Everything here targets a **Prusa MK4S** (250 × 210 × 220), prints in PETG
-with TPU where flex is needed, and prints **without supports**.
+with TPU where flex is needed, and prints **without supports** — enforced by
+`make check`, which fails the build on any part that would need them. A model
+may exempt a named part that deliberately trades support-free printing for a
+shape the 45° limit will not give; exactly one part in this repo does.
 
 ## Models
 
 | | Model | What it is | Materials | Status |
 |---|---|---|---|---|
-| <img src="models/helmet-holder/build/renders/asm_iso.png" width="150"> | **[helmet-holder](models/helmet-holder/)** | Clamp for a 40 × 40 mm square post with a swappable extension dock — helmet cradle, strap hook, lock hook, shelf | PETG + TPU pads | Coupon printing |
+| <img src="models/helmet-holder/build/renders/asm_iso.png" width="150"> | **[helmet-holder](models/helmet-holder/)** | Clamp for a 40 × 40 mm square post with a swappable extension dock — helmet cradle (two widths), strap hook, lock hook, shelf | PETG + TPU pads | Coupon printing |
 | <img src="models/charging-dock/docs/soft_monolith.png" width="150"> | **[charging-dock](models/charging-dock/)** | Inclined desk dock for two Anker Zolo A25M2 magnetic pucks, in four visual styles | PETG + TPU insert | Unprinted |
 
 ## Layout

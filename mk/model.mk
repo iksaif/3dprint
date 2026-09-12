@@ -15,6 +15,7 @@
 #   FIT_CASES     := a:label a,b     # passed to tools/fitcheck.py --cases
 #   EXTRA_CHECKS  := ./tools/strength.py build/x.stl
 #   SUPPORT_ARGS  := --reach 8
+#   SUPPORT_EXEMPT := ext_light   # parts ALLOWED to need support, see below
 #
 # Every model gets: make stl / 3mf / plates / check / clean.
 
@@ -38,7 +39,10 @@ STLS      = $(addprefix $(OUT)/,$(addsuffix .stl,$(PARTS)))
 MFS       = $(addprefix $(OUT)/,$(addsuffix .3mf,$(PARTS)))
 PLATEMFS  = $(addprefix $(OUT)/plates/,$(addsuffix .3mf,$(PLATES)))
 
-SUPPORT_ARGS ?=
+SUPPORT_ARGS   ?=
+SUPPORT_EXEMPT ?=
+EXEMPT_STLS  = $(addprefix $(OUT)/,$(addsuffix .stl,$(SUPPORT_EXEMPT)))
+STRICT_STLS  = $(filter-out $(EXEMPT_STLS),$(STLS))
 
 .PHONY: all stl 3mf plates check clean help
 .DELETE_ON_ERROR:
@@ -96,8 +100,18 @@ endif
 # Being correct and being printable are different questions. Every other check
 # here asks the first; this is the only one that asks the second, and it is the
 # only one that has ever caught an unprintable joint in this repo.
+#
+# No supports is the RULE, and it fails the build. SUPPORT_EXEMPT is the narrow
+# exception: a part that has deliberately traded support-free printing for
+# something else — a lighter or slimmer shape that the 45 deg limit will not
+# give. Those are still measured and still printed in the report, so the cost is
+# visible; they just do not fail. Anything not named there must come back clean.
 	@echo "\n== unsupported material (each part in its own print orientation)"
-	@$(PYTHON) $(TOOLS)/support.py $(SUPPORT_ARGS) $(STLS)
+	@$(PYTHON) $(TOOLS)/support.py $(SUPPORT_ARGS) $(STRICT_STLS)
+ifneq ($(strip $(SUPPORT_EXEMPT)),)
+	@echo "   -- these are ALLOWED to need support, by explicit choice --"
+	@$(PYTHON) $(TOOLS)/support.py $(SUPPORT_ARGS) $(EXEMPT_STLS) || true
+endif
 
 clean:
 	rm -rf $(OUT)

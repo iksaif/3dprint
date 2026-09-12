@@ -53,7 +53,11 @@ pd_max         = post_d_max + eff;
 // which sets arm_t at ~17 whatever the post measures. The back only has to tie
 // the two arms together against the screw preload, so making it as thick as the
 // arms would add a centimetre of plastic to the footprint for nothing.
-u_h            = 40;    // height along the post (= print Z for the U)
+// 32, not 40. The clamp was as tall as the post is wide, which is what made it
+// read as a block. Nothing needs the height: it only sets the couple arm that
+// reacts the extension's moment, and dropping it takes that from 74 to 92 N on
+// a ridge that yields around 50 MPa at 0.9.
+u_h            = 32;    // height along the post (= print Z for the U)
 back_t         = 12;    // U back thickness — a beam in bending across the post
 arm_t          = 17.5;  // arm thickness — set by the nut, see above
 plate_t        = 12;    // cover thickness — houses the flush heads and the lock bore
@@ -63,8 +67,15 @@ chamfer        = 1.2;
 gap_min        = 2;     // gap between the arm ends and the cover at post_d_min
 corner_relief  = 5;     // 45° cut at each inner corner, so only the post's flats are touched
 
+// The arms only need their full thickness at the FRONT, where the nut sits and
+// the cover's lip runs in its rebate. Behind that they carry load and nothing
+// else, so they taper back. The U prints flat with the post's axis as print Z,
+// which makes its whole outline a prism — any shape here is free.
+arm_t_back     = 9;     // arm thickness at the U's back
+
 hw             = (post_w + eff) / 2;    // U inner half-width
 x_out          = hw + arm_t;            // U outer half-width
+x_out_back     = hw + arm_t_back;
 arm_len        = pd_min - gap_min;      // arm length forward of the datum
 pad_hgt        = u_h - 2 * pad_margin;  // 32
 pad_arm_y      = 4;                     // side pads start this far forward of the datum
@@ -81,6 +92,31 @@ lip_len        = 16;    // how far the lips reach back from the cover's inner fa
 rebate_len     = 20;    // how far the rebate runs back from the arm's end face
 rebate_d       = cover_lip + cover_clear;
 
+// Where the arms stop being full thickness, going back. Defined HERE and not up
+// with x_out_back because it needs rebate_len, and OpenSCAD evaluates top level
+// assignments in order — used before it is set, it is silently undef. That has
+// now bitten this file twice.
+arm_taper_y    = arm_len - rebate_len;
+
+// ---- Screw caps ------------------------------------------------------------
+// Two discs pressed into the counterbores on top of the screw heads, so the
+// heads are closed off from the weather.
+//
+// This job used to belong to the extension: it was widened to 70 mm purely so
+// its plate covered the counterbores. That made every extension as wide as the
+// clamp — and since the width IS the print Z, the arm had to follow, which is
+// what made the cradle look like a slab. A pair of 8 mm discs does the same job
+// for a gram of filament, and does it even when no extension is fitted, which
+// the old arrangement never did.
+//
+// They print flat, several to a plate, and go in with a thumb.
+cap_t          = 2.5;   // disc thickness
+cap_clear      = 0.3;   // axial room so the cap sits flush, not proud
+cap_fit        = 0.15;  // diametral interference. A printed peg comes out large
+                        // and a printed hole small, so this is nominal minus a
+                        // little rather than plus.
+cap_lead       = 0.6;   // 45 deg lead-in chamfer, to start it square
+
 // ---- Clamp screws (M4 socket cap, heads flush in the cover) ---------------
 // M4, not M6. Nothing here is screw-limited: the tension per screw is under
 // 100 N and the friction the pads need to not slide is about 20 N, while an M4
@@ -92,7 +128,10 @@ bolt_hole      = bolt_d + bolt_clear;   // 4.5
 head_d         = 7;                     // M4 socket cap head
 head_h         = 4;
 cbore_d        = head_d + 0.8;
-cbore_h        = head_h + 0.5;
+// Deep enough to swallow the head AND a press-in cap on top of it. The cap is
+// what keeps the weather off the screws; the extension used to do that, and
+// making it wide enough to was what forced the whole part to 70 mm.
+cbore_h        = head_h + cap_t + cap_clear;
 nut_af         = 7;
 nut_h          = 3.2;
 nut_clear      = 0.4;
@@ -129,29 +168,110 @@ nut_y          = arm_len - nut_depth;
 // groove's front wall is the hard stop against the moment. Nothing slides
 // through an undercut, so nothing has a lip to begin in mid-air.
 ridge_len      = 30;    // along X — its ends are what locate the extension sideways
-ridge_w        = 5;     // along Y
+// 4.8, not 5. Widening ridge_clear to 0.6 below took both groove walls to
+// 2.9 mm, just under the 3 they are meant to keep — and the groove's front wall
+// is the single face that reacts the load's moment. Taking 0.2 off the ridge
+// hands it straight back: walls 3.0, and the ridge's own stress goes 1.11 ->
+// 1.20 MPa against a 50 MPa yield, which is not a number that matters here.
+ridge_w        = 4.8;   // along Y
 ridge_h        = 3;     // above the cover's top face
 ridge_back     = 6;     // ridge centre, measured back from the cover's outer face:
                         // half of plate_t, so the groove walls come out equal
 // Raised from 0.25. The extension has to swing ~7 deg to get the latch bump out
 // of its slot, and at that angle the ridge's corners sweep 0.36 mm inside the
 // groove. Anything at or under that binds, and the extension will not come off.
-ridge_clear    = 0.45;
+// 0.6, not 0.45. Same regression as flange_relief_rear and it has to be fixed in
+// the same place: dropping u_h to 32 moved the pivot closer to the foot, so the
+// swing went 7.9 -> 9.6 deg and the corner sweep 0.36 -> 0.49 — past the 0.45 it
+// had. The dims echo prints both numbers side by side; it was reporting a joint
+// that binds. The cost is 0.15 mm off each groove wall, 3.05 -> 2.9 mm, which is
+// still seven extrusions of PETG in front of the only face that takes the load.
+ridge_clear    = 0.6;
 ridge_lead     = 1.0;   // chamfer on the ridge's top, to guide it into the groove
 
-// Width is set by the clamp screws: the plate has to reach past their
-// counterbores so they are covered rather than sitting in the weather. The
-// bores span x 24.1..31.9, so 70 puts the edge 3.1 mm beyond them and leaves a
-// 4 mm reveal of cover each side.
+// Set by the HELMET now, not by the clamp screws. It was 70 so the plate would
+// cover their counterbores; the screw caps do that instead, which hands this
+// number back to the thing that should own it — enough width to spread the load
+// across the EPS foam rather than dent a line into it.
 //
-// ONE width, not two. A narrower arm on a wider plate was tried and it does not
+// ONE width for the whole part, still. A narrower arm on a wider plate does not
 // print: X is this part's print Z, so the arm's first layer would appear
-// complete and unsupported the moment the section widened out. Tapering does
-// not rescue it either — a gentle taper in plan is a near-vertical overhang in
-// the print, and reaching the cradle's 113 mm tip at 45 deg would need 104 mm
-// of width. The arm is the width of the plate, and the mass comes off with
-// lightening holes instead.
-ext_w          = 70;
+// complete and unsupported the moment the section widened. See ext_tip_taper
+// for the one exception the print allows.
+// 44. Once the screw caps took over weatherproofing, nothing outside this part
+// sets its width any more — only its own interface does: the ridge groove needs
+// 30.9 mm and the prisms reach 26.8, so 44 leaves 6.6 and 8.6 mm of margin.
+// Uniform width, so the arm needs no taper to be printable at all.
+ext_w          = 44;
+
+// The tip MAY narrow, because narrowing is the printable direction — but only
+// fast. Going up from the bed, a part of the arm that is narrower than the rest
+// appears as new material, and the strip that appears each layer is
+// dx / |dW/dy|. Holding that to 45 deg needs |dW/dy| >= 1, i.e. the width must
+// shed at least 2 mm for every mm of length.
+//
+// Over the last dozen mm that is a real taper and a lighter-looking tip. Over
+// the whole 100 mm arm it would need 200 mm of width, which is why the arm
+// itself cannot taper.
+// The ceiling on tip_taper_len is ext_w / (2 * tip_taper_rate) — 28 mm here,
+// where the tip would come to a knife edge. Going gentler is NOT the lever:
+// rate below 1.0 makes the strip revealed per layer longer than a layer is
+// tall, which is over 45 deg. The only way to taper more of the hook is to
+// taper more LENGTH at the same rate, and take a narrower tip for it:
+//
+//   12 mm -> 32 mm wide at the tip      20 mm -> 16 mm
+//   16 mm -> 24 mm                      24 mm ->  8 mm
+// Two things bound this, and the second is not the obvious one.
+//
+// rate is NOT 1.0. That is 45 deg exactly — the self-supporting limit itself,
+// with no margin — and it failed at a 20 mm taper. 1.15 is 41 deg.
+//
+// len is NOT the geometric ceiling either. That ceiling is ext_w/(2*rate) =
+// 24 mm, where the tip would come to a knife edge, but the real limit measures
+// at 14. What stops it sooner is the TOE: the taper's advance in y is only
+// self-supporting if the profile is locally flat there, and the toe curls up
+// steeply, so the two slopes compound. Past 14 mm the taper reaches the curl
+// and the combination goes over 45 deg — measured at 16, not predicted.
+//
+// So to taper more of the hook, the toe would have to curl less. That is a
+// shape decision, not a parameter.
+ext_tip_taper  = true;
+tip_taper_len  = 14;    // how far back from the tip the taper runs
+tip_taper_rate = 1.15;  // dW/dy; 1.0 would be 45 deg, this is 41
+
+// ---- The light cradle ------------------------------------------------------
+// Everything above is about staying support-free. This one is the deliberate
+// exception, and it is a separate PART rather than a setting so that choosing it
+// is a choice: ext_helmet is the cradle that prints clean, ext_light is the
+// cradle that looks and weighs like this and needs support to get there.
+//
+// The shape is the one thing the 45 deg rule will not give. Above, the width can
+// only close in over the last 14 mm, which reads as a chamfer bolted onto a slab.
+// Here it closes from the end of the interface all the way to the tip, so the
+// part has one continuous line from the plate to the toe.
+//
+// The sweep is a RAISED COSINE, not a straight line. Its slope is zero at both
+// ends, so the arm leaves the plate without a crease and arrives at the tip
+// without a point — a straight taper of the same span would show a hard corner
+// where it starts. That is the whole of what makes it read as grown rather than
+// machined.
+//
+//   W(t) = Wtip + (W0 - Wtip) * (1 + cos(180 t)) / 2,   t = 0 at y0, 1 at y1
+//
+// The cost, stated plainly: the steepest the surface ever gets is at the middle
+// of the sweep, at atan(A*pi/(2L)) from the bed where A is the half-width lost
+// and L the span. At 44 -> 10 over ~90 mm that is about 17 deg, i.e. the arm's
+// whole underside is a shallow overhang and is printed on support. That is not
+// a number to tune down — it is what asking for the shape costs.
+//
+// This part is named in the Makefile's SUPPORT_EXEMPT. Nothing else is.
+light_tip_w    = 10;    // width at the toe — set by the helmet, not by the print
+light_steps    = 160;   // polygon resolution along the sweep. At 64 the facets
+                        // are 1.4 mm long and read as bands down the curve —
+                        // and the curve is the entire point of this part.
+// light_from is further down, next to ext_plate_t, because it IS ext_plate_t and
+// that is not assigned until then. Third time: OpenSCAD reads top level
+// assignments in order and a forward reference is silently undef, not an error.
 
 // Lightening holes run through the WIDTH, which is the one direction that is
 // free here: along X is along the print's Z, so they come out as plain vertical
@@ -161,6 +281,10 @@ lighten_wall   = 4;     // material left around each hole, measured on the
                         // profile's local half-thickness
 lighten_min_d  = 7;     // below this a hole is more fuss than it is worth
 ext_plate_t    = 9;
+// The light cradle's sweep starts where the interface stops needing full width:
+// the plate's front face. Everything the joint uses — the ridge groove, the
+// prisms, the lock nut — lives behind this, so the sweep can never eat into it.
+light_from     = ext_plate_t;
 // Raised from 13. What forced it: with the nut pinned above the groove, the
 // flange's remaining height IS the room the screw's tip has to overrun into.
 // At 13 there was 1.0 mm of it and then a 1.75 mm wall — so as soon as the head
@@ -177,7 +301,11 @@ flange_relief  = 0.15;      // and clears its top, so the ridge alone sets the s
 // 6 mm behind the pivot, dips about 0.35 mm — more than flange_relief — and it
 // would land on the cover's top and stop the swing before the tabs seated. The
 // front of the flange keeps the tighter relief and still carries the weight.
-flange_relief_rear = 1.0;
+// 1.4, not 1.0. Lowering u_h to 32 steepened the swing from 7.9 to 9.6 deg —
+// the foot's reach is unchanged but the pivot is closer — and the flange's rear
+// edge went from dipping 0.83 mm to 1.02, straight past the old relief. It
+// would have grounded on the cover before the prisms engaged.
+flange_relief_rear = 1.4;
 
 // The groove in the flange's underside that the ridge drops into. Closed at
 // both ends in X: that is what stops the extension sliding sideways, and it
@@ -267,8 +395,12 @@ foot_z0        = -(foot_gap + foot_t);   // the foot's underside, below the brac
 // prisms stay small.
 prism_x        = 9;     // the two prisms, either side of the centre
 prism_w        = 6;     // flat top length in X
-prism_h        = 1.6;   // height above the foot's top face
-prism_lead     = 1.6;   // = prism_h, so the ends are 45 deg against print Z
+// Engagement is prism_h - foot_gap, so 1.4 here means 1.0 mm of bite. It was
+// 1.6 (1.2 mm of bite) on the first working print and that clipped in hard —
+// it held, but it took real force. This is the number to tune if it ever feels
+// wrong; the wall thickness in front of the recess is not.
+prism_h        = 1.4;   // height above the foot's top face
+prism_lead     = 1.4;   // = prism_h, so the ends are 45 deg against print Z
 // prism_y decides how much cover is left between the recess and the front face
 // — the face you look at — and THAT wall is the one that works: rotating the
 // extension out drives the prism forward against it. At prism_y = 3 with

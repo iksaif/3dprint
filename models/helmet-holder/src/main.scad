@@ -18,7 +18,7 @@ part       = "assembly";
 cutaway    = false;
 cut_at     = 0;
 show_post  = true;
-show_ext   = "ext_helmet";
+show_ext   = "ext_light";
 show_lock  = true;
 ext_orient = "print";        // "print" (STL export) | "install" (review renders)
 
@@ -105,6 +105,15 @@ echo(str("groove walls: ", (flange_back - lock_y) - ridge_w / 2 - ridge_clear,
          " mm in front (the front one takes the moment; want > 3)"));
 echo(str("flange above the groove for the lock nut: ",
          ext_h - ridge_groove_top, " mm  (want > 8)"));
+// The light cradle's sweep, as the printer sees it. A raised cosine is steepest
+// halfway along, at atan(A*pi/(2L)) off the bed with A the half-width lost and L
+// the span. Under 45 means support, which is the deal for this part and this
+// part only — the number is here so the cost stays visible.
+light_span  = pts_reach(helmet_pts()) - light_from;
+light_slope = atan((ext_w - light_tip_w) / 2 * PI / (2 * light_span));
+echo(str("light cradle: ", ext_w, " -> ", light_tip_w, " mm over ", light_span,
+         " mm, steepest face ", round(light_slope * 10) / 10,
+         " deg off the bed  (< 45 = NEEDS SUPPORT, by choice)"));
 echo(str("prism outer edge to the extension edge: ",
          ext_w / 2 - (prism_x + prism_w / 2 + prism_lead), " mm  (want > 3)"));
 // Material left between the nut slot and the rebate floor
@@ -159,6 +168,7 @@ module assembly() {
     translate([0, pd + plate_t, 0]) {
         color(c_ext) cut([0, pd + plate_t, 0]) {
             if (show_ext == "ext_helmet") ext_helmet();
+            if (show_ext == "ext_light")  ext_light();
             if (show_ext == "ext_strap")  ext_strap();
             if (show_ext == "ext_lock")   ext_lock();
             if (show_ext == "ext_shelf")  ext_shelf();
@@ -199,7 +209,9 @@ module cut(o = [0, 0, 0]) {
     if (part == "cover")      cut() cover(ext_orient == "install" ? "install" : "print");
     if (part == "pad")        pad_flat();
     if (part == "pad_arm")    pad_arm_flat();
+    if (part == "screw_cap")  screw_cap();
     if (part == "ext_helmet") cut() ext_helmet(ext_orient);
+    if (part == "ext_light")  cut() ext_light(ext_orient);
     if (part == "ext_strap")  cut() ext_strap(ext_orient);
     if (part == "ext_lock")   cut() ext_lock(ext_orient);
     if (part == "ext_shelf")  cut() ext_shelf(ext_orient);

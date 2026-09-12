@@ -105,11 +105,17 @@ module pad_relieve(where) {
 
 // ---------- U-bracket -------------------------------------------------------
 
+// The arms are full thickness only from arm_taper_y forward — that is where the
+// nut and the cover's rebate live. Behind it they taper in to arm_t_back, which
+// takes a visible slab off each side and costs nothing to print: this outline is
+// extruded along the post's axis, so its shape is free.
 module u_2d() {
     difference() {
         offset(r = corner_r) offset(r = -corner_r)
-            polygon([[-x_out, -back_t], [x_out, -back_t], [x_out, arm_len], [hw, arm_len],
-                     [hw, 0], [-hw, 0], [-hw, arm_len], [-x_out, arm_len]]);
+            polygon([[-x_out_back, -back_t], [x_out_back, -back_t],
+                     [x_out, arm_taper_y], [x_out, arm_len], [hw, arm_len],
+                     [hw, 0], [-hw, 0], [-hw, arm_len],
+                     [-x_out, arm_len], [-x_out, arm_taper_y]]);
         c = corner_relief;
         translate([ hw, 0]) polygon([[0, 0], [ c, 0], [0, -c]]);
         translate([-hw, 0]) polygon([[0, 0], [-c, 0], [0, -c]]);
@@ -243,6 +249,28 @@ module cover_installed() {
 module cover(orient = "install") {
     if (orient == "print") translate([0, -(pd - lip_len), 0]) cover_installed();
     else cover_installed();
+}
+
+// ---------- screw cap -------------------------------------------------------
+// A disc pressed into a clamp screw's counterbore, on top of the head, so the
+// screw is closed off from the weather. Print two, flat, no support.
+//
+// Undersized rather than oversized: a printed peg comes out large and a printed
+// hole small, so nominal-minus-a-little lands on a firm push fit. The lead-in
+// chamfer is there so it starts square instead of cocking and shaving itself.
+module screw_cap() {
+    d = cbore_d - cap_fit;
+    union() {
+        translate([0, 0, cap_lead]) cylinder(d = d, h = cap_t - cap_lead);
+        cylinder(d1 = d - 2 * cap_lead, d2 = d, h = cap_lead);
+    }
+}
+
+// Both caps, seated in the cover — assembly view only.
+module screw_caps_installed() {
+    for (s = [-1, 1])
+        translate([s * bolt_x, pd + plate_t - cap_t - cap_clear / 2, bolt_z])
+            rotate([-90, 0, 0]) screw_cap();
 }
 
 // ---------- mock hardware for the assembly ---------------------------------

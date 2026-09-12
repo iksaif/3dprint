@@ -1,7 +1,7 @@
 # Working in this repo
 
-Parametric OpenSCAD models for a Prusa MK4S. PETG, TPU where flex is needed, no
-supports anywhere.
+Parametric OpenSCAD models for a Prusa MK4S. PETG, TPU where flex is needed,
+support-free unless a part is explicitly exempted (see below).
 
 ## Non-negotiables
 
@@ -13,9 +13,23 @@ the loop.
 **Run `make check` and read the output.** Not "it built". The checks exist because
 each of them has caught something a render did not.
 
-**No supports, ever.** If a feature needs support, the feature is wrong. A part
-prints support-free iff, at every layer, its material rests on material in the
-layer below. A prism along the part's own print Z always satisfies this.
+**No supports.** If a feature needs support, the feature is wrong. A part prints
+support-free iff, at every layer, its material rests on material in the layer
+below. A prism along the part's own print Z always satisfies this. `make check`
+enforces it and fails the build.
+
+The one escape hatch is `SUPPORT_EXEMPT` in a model's Makefile, and it is
+deliberately narrow. A part belongs in it only when it exists *because* it
+trades support-free printing for a shape the 45 deg limit will not give, and
+only when a support-free part doing the same job still stands beside it.
+`ext_light` is the whole of the list: the helmet cradle whose width sweeps to a
+10 mm toe, next to `ext_helmet`, which does not. Exempt parts are still measured
+and still printed in the report, so the cost stays visible; they just do not
+fail. They also get their own plate, because turning support on in the slicer
+turns it on for everything sharing that bed.
+
+Reaching for the exemption to make a part pass is the exact failure this is
+built to prevent. Reshape the part.
 
 ## The shared pieces
 
