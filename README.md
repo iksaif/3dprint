@@ -13,6 +13,7 @@ shape the 45° limit will not give; exactly one part in this repo does.
 |---|---|---|---|---|
 | <img src="models/helmet-holder/build/renders/asm_iso.png" width="150"> | **[helmet-holder](models/helmet-holder/)** | Clamp for a 40 × 40 mm square post with a swappable extension dock — helmet cradle (two widths), strap hook, lock hook, shelf | PETG + TPU pads | Coupon printing |
 | <img src="models/charging-dock/docs/soft_monolith.png" width="150"> | **[charging-dock](models/charging-dock/)** | Inclined desk dock for two Anker Zolo A25M2 magnetic pucks, in four visual styles | PETG + TPU insert | Unprinted |
+| <img src="models/post-hook/docs/asm_side.png" width="150"> | **[post-hook](models/post-hook/)** | Snap-on hook for a 40 × 40 mm post — no screws, three hook sizes, optional cable tie | PETG + TPU liner | Unprinted |
 
 ## Layout
 
