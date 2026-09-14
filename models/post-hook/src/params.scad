@@ -107,7 +107,24 @@ arm_t          = 3.6;   // THE SPRING. 8 perimeters at 0.45. See springcheck.py:
 // convex rounding of r takes r off each of its ends — at 2.5 the crest the
 // post actually bears on stops existing.
 corner_r       = 1.5;
-fillet_r       = 1.0;
+// 2.5, not 1.0, and this is the one rounding in the model that is structural
+// rather than cosmetic. The arms are pushed OUTWARD by the post, so at the root
+// the tension face is the one opposite the load — the inner, cavity-facing
+// surface — and this is the fillet on it. The outer corners are on the
+// compression side, and a convex corner concentrates nothing anyway, so making
+// those rounder buys no strength.
+//
+// It matters more than the size suggests. At 1.0 the stress concentration is
+// about 1.55, which put the peak stress while fitting at 42 MPa against PETG's
+// ~50: a margin of 1.18. At 2.5 it is 1.33 and 36 MPa, a margin of 1.38, for no
+// change in stiffness, grip or insertion force. Past ~2.5 it flattens out.
+//
+// Thickening the arm is NOT the alternative, and it is worth being clear why:
+// this spring is deflection-controlled, not force-controlled. sigma = E * 3 t d
+// / (2 L^2) is proportional to t, so a thicker arm carries MORE root stress at
+// the same imposed deflection, not less. The levers are the fillet, a longer
+// arm, or less preload.
+fillet_r       = 2.5;
 chamfer        = 0.8;   // top and bottom edge chamfer. Must stay under
                         // lip_reach/2 or chamfered_extrude erodes the lip away.
 

@@ -55,6 +55,39 @@ profile and applying a closing; `hook_side_fillet` in plan, a true radius
 tangent to the wall and to the hook's side face, swept up through the hook's own
 profile so it follows the rake instead of standing on the bed.
 
+## Where the stress goes
+
+All of it goes to one corner, and it is not the one it looks like. The arms are
+pushed **outward** by the post, so at the root the tension face is the one
+*opposite* the load — the inner, cavity-facing surface. That is what `fillet_r`
+rounds. The external corners are on the compression side, and a convex corner
+concentrates nothing, so rounding those buys no strength at all.
+
+The fillet was 1.0 mm and is now 2.5, which is the only rounding in the model
+that is structural rather than cosmetic:
+
+| `fillet_r` | r/t | Kt | peak while fitting | margin on yield |
+|---|---|---|---|---|
+| 1.0 | 0.28 | 1.55 | 42 MPa | 1.18× |
+| 2.5 | 0.69 | 1.33 | 36 MPa | **1.38×** |
+| 3.5 | 0.97 | 1.27 | 35 MPa | 1.44× |
+
+It costs nothing — no change to stiffness, grip or insertion force — and past
+~2.5 it flattens out.
+
+**Thickening the arm is not the alternative**, and the reason is worth keeping
+in mind for any printed spring: this one is *deflection*-controlled, not
+force-controlled. The post imposes the deflection, so σ = E·3tδ/(2L²) rises
+with `t` — a thicker arm carries *more* root stress, not less, while also
+needing more force to fit. The levers are the fillet, a longer arm, or less
+preload.
+
+The number that is still worth watching is the **sustained** one: 20 MPa sits at
+the root for as long as the clip is on the post, and PETG creeps at that level
+over months. It will slowly relax the preload and so the grip. `springcheck.py`
+fails above 22 MPa, and the cable tie is the fix if a particular clip ever goes
+slack.
+
 ## The one idea the whole model rests on
 
 **Print Z is the post's own axis.** Everything that wraps the post — arms, snap
@@ -191,6 +224,8 @@ grip         28 N per side, 34 N of friction     ->  3.4x on 1 kg
 fitting      4.5 mm of spread, 30 deg lead-in    ->  5.9 kgf of push
 holding on   2.0 mm of travel over a 45 deg cam  ->  4.6 kgf of straight pull
 strain       1.36% peak while fitting, 0.76% sustained  (PETG yields ~2.5%)
+root stress  fillet r2.5, Kt 1.33            ->  36 MPa peak, 1.38x on yield
+                                                 20 MPa sustained
 catch        0 mm^3 at rest (tangent), 55 mm^3 pulled 1 mm off
 ```
 

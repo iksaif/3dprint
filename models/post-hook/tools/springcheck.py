@@ -176,6 +176,33 @@ def main():
     if sustained > 0.010:
         fails.append(f"sustained strain {sustained * 100:.2f}% will creep")
 
+    # ---- 3b. root stress, where the arm meets the back wall ----------------
+    # The arms are pushed OUTWARD, so the tension face at the root is the inner,
+    # cavity-facing one — and that is the corner fillet_r rounds. The outer
+    # corners are in compression and concentrate nothing, which is why making
+    # them rounder is not the lever it looks like.
+    #
+    # Kt is the standard stepped-bar-in-bending concentration, fitted from the
+    # published charts. Approximate, and deliberately on the conservative side:
+    # it is here to show whether the margin is 1.2 or 2, not to be exact.
+    #
+    # Thickening the arm does not help. This spring is deflection-controlled, so
+    # sigma = E * 3 t d / (2 L^2) rises with t — a stiffer arm carries MORE root
+    # stress at the same imposed deflection.
+    r_fil = p["fillet_r"]
+    kt = 1 + 0.27 * (r_fil / arm_t) ** -0.55
+    s_sus, s_peak = E * sustained * kt, E * peak * kt
+    yld = p["petg_yield_mpa"]
+    print(f"  root stress: fillet r{r_fil} on a {arm_t} mm arm is r/t "
+          f"{r_fil / arm_t:.2f}, Kt {kt:.2f} -> {s_peak:.0f} MPa peak while "
+          f"fitting ({yld / s_peak:.2f}x on yield), {s_sus:.0f} MPa sustained")
+    if s_peak > yld / 1.3:
+        fails.append(f"peak root stress {s_peak:.0f} MPa leaves under 1.3x on "
+                     f"a {yld:.0f} MPa yield — open up fillet_r")
+    if s_sus > 22:
+        fails.append(f"sustained root stress {s_sus:.0f} MPa will creep the "
+                     f"preload away over months")
+
     # ---- 4. does the lip actually catch? -----------------------------------
     # Rendered, not computed, and as a PAIR. The cam face is tangent to the
     # post's corner, so at rest the two just touch and the overlap is genuinely
