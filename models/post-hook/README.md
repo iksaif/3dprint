@@ -6,7 +6,7 @@ it off again.
 
 |  |  |
 |---|---|
-| **Parts** | `clip_s` / `clip_m` / `clip_l` (PETG) + `liner` (TPU) |
+| **Parts** | `clip_s` / `clip_m` / `clip_l` (PETG) + `pad_back` + 2 × `pad_side` (TPU) |
 | **Load** | 1 kg, with a 3.4× margin on the friction that carries it |
 | **Fixings** | none. A cable tie is optional and the slots are there for it |
 | **Supports** | none, on any part |
@@ -17,7 +17,7 @@ make plates     # build/plates/{petg,tpu,test}.3mf
 make check      # just the verification
 ```
 
-Print `test.3mf` first: one `clip_m` and one liner. Everything worth learning
+Print `test.3mf` first: one `clip_m` and a set of three pads. Everything worth learning
 from a first print — how hard it is to press on, whether the lips release when
 you want them to, whether it holds a kilo — is a property of the arm spring over
 its whole length, so a coupon cannot tell you any of it.
@@ -26,8 +26,8 @@ its whole length, so a coupon cannot tell you any of it.
 
 The clip is a C that wraps three faces of the post. The two arms are the spring:
 their inner faces are drawn 2 × 2.5 mm closer together than the post plus its
-liner, so putting it on springs them open and they squeeze back. That squeeze,
-through the TPU liner, is the entire load path — 34 N of friction against a
+pads, so putting it on springs them open and they squeeze back. That squeeze,
+through the TPU pads, is the entire load path — 34 N of friction against a
 9.8 N load. Nothing is clamped and nothing is bolted.
 
 Each arm ends in a lip whose retention face is a **45° cam tangent to the post's
@@ -36,7 +36,7 @@ force ratio is 1:1, so getting it off by straight pull needs the same 45 N it
 would take to spring the arms apart — while squeezing the thumb tabs releases it
 instantly. The cam also makes the fore-and-aft capture elastic: the arms' inward
 force resolves on a 45° face into a component pushing the post back onto the
-liner, so the clip clamps itself in both axes and a post 0.5 mm over nominal
+back pad, so the clip clamps itself in both axes and a post 0.5 mm over nominal
 just springs the arms 0.5 mm further instead of jamming.
 
 The hook's profile is a **stroke** — a chain of hulled circles whose radius is
@@ -54,6 +54,28 @@ sharp concave corners, filleted separately because they lie in different planes:
 profile and applying a closing; `hook_side_fillet` in plan, a true radius
 tangent to the wall and to the hook's side face, swept up through the hook's own
 profile so it follows the rake instead of standing on the bed.
+
+## Why the pads are three flat slabs
+
+They were one U, printed standing on end because that is how it sits on the
+post. That made it three thin 28 mm-tall walls in TPU on a 41 mm footprint:
+floppy, slow, and prone to shifting. Split into three and laid flat it is three
+low slabs — **15 layers instead of 140**.
+
+Laid flat the *teeth get easier too*, which is the part that looks wrong until
+you work it through. The sawtooth's depth becomes print Z, so above the valley
+only the upper parts of the ramps are present and each one **shrinks** as z
+rises. There is no overhang anywhere. Standing up, the whole part was an
+unsupported shell.
+
+It costs the studs. A stud has to point either into the bed or out of the pad's
+gripping face, and neither prints — so the pads are a push fit, with glue if
+they will not stay put. That only matters between assembling the clip and
+fitting it: once it is on the post, the post holds them against the PETG.
+
+It costs **no collar geometry at all**. `pad_t` is still measured from the arm's
+inner face to the crest exactly as the U's wall was, so `hw_in` is unchanged and
+every spring, cam and catch number is identical either way.
 
 ## Where the stress goes
 
@@ -129,9 +151,10 @@ the mouth, not on the reach.
 
 ## Fitting it
 
-1. Push the liner in through the gap between the lips. It is 41 mm wide going
-   through a 31 mm gap — squeeze it, it is 2.2 mm of TPU. Its two studs press
-   into the back wall so it cannot fall out when the clip is off the post.
+1. Lay the three pads on the collar's inner faces, teeth inward — the wide one
+   on the back wall, the two long ones on the arms. They are a push fit; a dab
+   of glue if they will not stay put. Once the clip is on the post there is
+   nowhere for them to go, so this only matters until you fit it.
 2. Offer the clip up to the post and press. The lead-in ramps spread the arms;
    about 5.9 kgf, two thumbs, and it clicks over the corners.
 3. To remove: squeeze the two thumb tabs outward and lift it off.
@@ -196,8 +219,8 @@ That second one exists because this model got it wrong twice, and both times
 every other check passed:
 
 - The catch was quoted as `lip_reach - preload`. Wrong: the preload cancels out.
-  Seated, the arm's inner face is always exactly `liner_t` off the post, so the
-  overlap is `lip_reach - liner_t`.
+  Seated, the arm's inner face is always exactly `pad_t` off the post, so the
+  overlap is `lip_reach - pad_t`.
 - Far worse, and invisible in every render: **the post's corners are rounded.**
   A square retention face 0.5 mm in front of the nominal front face meets a post
   that is only 18.7 mm half-wide at that depth, not 20. The lip reached to 18.0
@@ -232,9 +255,9 @@ catch        0 mm^3 at rest (tangent), 55 mm^3 pulled 1 mm off
 ## Reading the assembly render
 
 Parts are modelled **unsprung**, because that is what gets printed. Drawn that
-way against a nominal post, the post reads as buried 2.5 mm into the liner on
+way against a nominal post, the post reads as buried 2.5 mm into the pads on
 each side — which looks like a mistake and is not one. It is the preload: on a
-real post the arms flex out by exactly that much and carry the liner with them,
+real post the arms flex out by exactly that much and carry the pads with them,
 and nothing is crushed, since the teeth are only 0.8 mm proud.
 
 A review render that shows 2.5 mm of interference is still a bad review render,
@@ -257,7 +280,7 @@ collapses to `0.586 · r_actual >= 0.586 · r_design`, since both the tangent
 constant and the arc's centre move with `r`. So:
 
 - post **rounder** than designed → a little slack, which the arms simply close
-  up and the liner's crests absorb;
+  up and the pads' crests absorb;
 - post **squarer** than designed → the cam drives into the corner and the clip
   will not seat without permanently spreading the arms.
 

@@ -2,7 +2,7 @@
 // post-hook — every dimension, in mm.
 //
 // A single-piece PETG clip that presses onto a 40 x 40 post from one face, with
-// a TPU liner that does the gripping. One hook, ~1 kg, no screws.
+// three flat TPU pads that do the gripping. One hook, ~1 kg, no screws.
 //
 // DATUM: the POST's centreline. x and y are measured from the post's axis, so
 // x = +/- post_w/2 and y = +/- post_d/2 are its four faces. z = 0 is the bed.
@@ -30,7 +30,7 @@ include <../../../lib/scad/print.scad>
 // post_w is the axis the ARMS grip (they flex in x, so tolerance here is
 // absorbed by the spring and costs nothing but a little preload).
 // post_d is the axis the LIPS capture, and that one is rigid — the lip face and
-// the back liner are two hard surfaces a fixed distance apart. So post_d is the
+// the back pad are two hard surfaces a fixed distance apart. So post_d is the
 // measurement to get right, and post_d_min/max are what the teeth must absorb.
 post_w         = 40;
 post_d         = 40;
@@ -47,7 +47,7 @@ post_d_max     = 40.5;
 // reduces to 0.586 * r_actual >= 0.586 * r_design. So:
 //
 //   post rounder than designed  ->  a little slack, which the arms simply close
-//                                   up and the liner's crests absorb
+//                                   up and the pads' crests absorb
 //   post SQUARER than designed  ->  the cam drives into the corner and the clip
 //                                   will not seat without permanently spreading
 //                                   the arms
@@ -59,37 +59,57 @@ post_d_max     = 40.5;
 // jammed both lips by 0.8 mm.
 post_corner_r  = 0.5;   // measured: these posts are near enough square
 
-// ---- TPU liner ---------------------------------------------------------------
-// A single U, dropped into the collar from above before it goes on the post.
-// It does three jobs the PETG cannot: it grips (TPU on painted steel is roughly
-// mu 0.6-0.8 against PETG's 0.2), it absorbs post tolerance, and it is the only
-// compliance in the post_d direction.
+// ---- TPU pads ----------------------------------------------------------------
+// THREE flat pads — one for the back wall, two for the arms — not one U.
 //
-// liner_t is measured at a TOOTH CREST, not at the base wall — the crests are
+// It was a U, printed standing on end because that is how it sits on the post.
+// That made it three thin 28 mm-tall walls in TPU on a 41 mm footprint, which
+// is a genuinely bad print: floppy, prone to shifting, and slow. Split into
+// three and laid flat it is three low slabs, and each one is trivial.
+//
+// Laid flat the TEETH get easier too, not harder, which is the part that looks
+// wrong until you work it through. The sawtooth's depth becomes print Z, so at
+// any height above the valley only the upper parts of the ramps are present and
+// each one SHRINKS as z rises. No overhang anywhere — where standing up, the
+// whole part is a tall unsupported shell.
+//
+// The cost is retention: the studs are gone, because a stud has to point either
+// into the bed or out of the pad's gripping face, and neither prints. The pads
+// are a push fit against the collar's inner faces, with glue if they will not
+// stay put on their own. Once the clip is on the post there is nowhere for them
+// to go — the post holds them against the PETG — so this only matters between
+// assembling the clip and fitting it.
+//
+// What it does NOT cost is any collar geometry. pad_t is still measured from
+// the arm's inner face to the crest, exactly as liner_t was, so hw_in and every
+// spring, cam and catch number below are unchanged.
+//
+// pad_t is measured at a TOOTH CREST, not at the base wall — the crests are
 // what touch the post, so they are what the fits are written against.
-liner_t        = 3.0;   // crest to outer face
-// 0.8, down from the 1.0 the first version had. A tooth 1.0 proud on a 3.0
-// liner is a third of the part and prints as a rack rather than a grip face; it
-// also left only 2.0 mm of base wall. The floor under this number is not
-// comfort, though — it is post_d_max - post_d, because these crests are the
-// ONLY thing that absorbs an oversize post (see the note on post_d).
-tooth_d        = 0.8;   // crest proud of the valley; the base wall is 2.2
-tooth_pitch    = 4;     // along z
-liner_margin   = 3;     // liner shorter than the collar, top and bottom
-liner_stud_d   = 4.4;   // pressed into a 4.0 hole in the back wall — TPU, so
-liner_stud_hole = 4.0;  // the interference is taken up by squashing the stud
-liner_stud_h   = 3;
-// Side legs stop this far short of the post's front face. Not cosmetic: they
+pad_t          = 3.0;   // crest to the face it sits on
+// 0.8, down from the 1.0 the first version had. A tooth 1.0 proud on a 3.0 pad
+// is a third of the part and prints as a rack rather than a grip face; it also
+// left only 2.0 mm of base. The floor under this number is not comfort, though
+// — it is post_d_max - post_d, because these crests are the ONLY thing that
+// absorbs an oversize post (see the note on post_d).
+tooth_d        = 0.8;   // crest proud of the valley; the base is 2.2
+tooth_pitch    = 4;     // along the post
+pad_margin     = 3;     // pads shorter than the collar, top and bottom
+// Side pads stop this far short of the post's front face. Not cosmetic: they
 // have to end BEHIND where the lip's cam face leaves the arm (y_cam_start), or
-// the liner and the lip occupy the same millimetre and the fit check lights up.
-liner_front    = 6;
+// pad and lip occupy the same millimetre and the fit check lights up.
+pad_front      = 6;
+pad_clear      = 0.5;   // off the collar's inner corner fillets
 
-// Teeth ramp INWARD going up and step back square at the top. Both halves are
-// printable in this orientation and only one of them has to be: the ramp is
-// material appearing gradually (a 68 deg wall), and the step is material
-// stopping, which is free. The square face is uppermost, which is the face the
-// post drives into when the clip tries to slide DOWN.
-tooth_rise     = tooth_pitch - 1.2;   // ramp length; the rest is the step
+// Teeth ramp up the post and step back square at the top, so the square face is
+// uppermost — the face the post drives into when the clip tries to slide DOWN.
+//
+// tooth_flat exists for the print, not the grip: without it every tooth ends in
+// a knife-edge crest, and the top layer of the pad is a single extrusion-wide
+// line running the length of it. 0.6 gives the last layer something to sit on.
+tooth_rise     = 2.6;   // ramp length
+tooth_flat     = 0.6;   // flat crest at the top of the ramp
+tooth_step     = tooth_pitch - tooth_rise - tooth_flat;   // base before the next
 
 // ---- The collar ---------------------------------------------------------------
 // collar_h is the arms' second moment (I scales with it, so preload force does
@@ -97,7 +117,7 @@ tooth_rise     = tooth_pitch - 1.2;   // ramp length; the rest is the step
 // post: 36 is where the arms are stiff enough and the part still reads as a
 // clip rather than a block.
 collar_h       = 36;
-back_t         = 6.0;   // back wall — rigid, and where the liner studs land
+back_t         = 6.0;   // back wall — rigid; it reacts both arms' moments
 arm_t          = 3.6;   // THE SPRING. 8 perimeters at 0.45. See springcheck.py:
                         // this number sets grip, insertion force and strain all
                         // at once, and it is the only one that sets all three.
@@ -131,7 +151,7 @@ chamfer        = 0.8;   // top and bottom edge chamfer. Must stay under
 // preload is how far each arm is sprung open when the clip is on the post, and
 // therefore what generates the friction that stops it sliding down. It is set
 // by geometry alone: the arms' unloaded inner faces are 2*preload closer
-// together than the post plus its liner.
+// together than the post plus its pads.
 preload        = 2.5;
 
 // ---- The snap lips -------------------------------------------------------------
@@ -144,8 +164,8 @@ preload        = 2.5;
 // with the catch quoted as lip_reach - preload. Both halves were wrong:
 //
 //  1. The preload does not eat the reach; the LINER does. Seated, the arm's
-//     inner face is always exactly liner_t off the post — that is what seated
-//     means, the crests are touching — so the overlap is lip_reach - liner_t
+//     inner face is always exactly pad_t off the post — that is what seated
+//     means, the crests are touching — so the overlap is lip_reach - pad_t
 //     whatever the preload. The preload only sets how far the arm must spread
 //     to get there.
 //  2. Far worse, and invisible in every render: the post's corners are ROUNDED.
@@ -161,7 +181,7 @@ preload        = 2.5;
 // 45 deg face tangent to the corner arc bears on it along a line the full
 // height of the collar, and it makes the whole capture elastic rather than
 // rigid: the arms' inward force resolves on that 45 deg face into a component
-// that drives the post BACK against the liner, so the clip clamps itself fore
+// that drives the post BACK against the back pad, so it clamps itself fore
 // and aft and there is nothing left to rattle. That is why y_squeeze is gone —
 // it existed to take up a slop this geometry cannot have.
 //
@@ -174,7 +194,7 @@ lip_flat       = 2.0;   // crest length in y, past the cam face
 lip_cam        = 45;    // cam angle. 45 makes pull-off force equal spread force
 lip_clear      = 0.0;   // off the corner arc. Zero on purpose: the arms should
                         // arrive already bearing on the corners, since that
-                        // contact is what pulls the post onto the back liner.
+                        // contact is what pulls the post onto the back pad.
 
 // The lead-in ramp is the whole of the insertion mechanism: it converts the
 // push into arm spread at tan(lead_angle). Shallower is easier to press on and
@@ -228,9 +248,9 @@ tie_t          = 2.2;   // along y: a 1.3 mm tie doubled, plus clearance
 tie_z          = collar_h / 2;
 
 // ---- Derived collar geometry ----------------------------------------------
-hw_in          = post_w / 2 + liner_t - preload;   // arm inner face, unloaded
+hw_in          = post_w / 2 + pad_t - preload;   // arm inner face, unloaded
 x_out          = hw_in + arm_t;                    // arm outer face
-y_back_in      = -(post_d / 2 + liner_t);          // back wall inner face
+y_back_in      = -(post_d / 2 + pad_t);          // back wall inner face
 y_back_out     = y_back_in - back_t;               // ... and outer: the hook's root
 // The cam face lies on the line x + y = cam_c, tangent to the post's corner arc
 // (centred at post_w/2 - r, post_d/2 - r) once the arms are sprung. Solving the
@@ -268,21 +288,26 @@ arm_free       = y_cam_start + lip_reach / 2 - y_back_in;
 // crest, unloaded at hw_in - lip_reach, has to clear the post's side face at
 // post_w/2. This is the strain the part has to survive, and it is NOT
 // preload + lip_reach — hw_in already has the preload built into it, so adding
-// it again double-counts. It is also not additive with the liner: mid-arm the
+// it again double-counts. It is also not additive with the pads: mid-arm the
 // post only asks for preload, less than this, so the tip governs and the arm
 // simply bends into a curve.
 spread_peak    = post_w / 2 - (hw_in - lip_reach);
 
-// ---- Derived liner geometry -------------------------------------------------
+// ---- Derived pad geometry ---------------------------------------------------
 // In params and not in clip.scad, because main.scad and the checkers `use`
 // clip.scad — and `use` imports modules but NOT variables, so anything derived
 // over there reads as undef from here. That is the repo's oldest trap.
-n_teeth        = floor((collar_h - 2 * liner_margin) / tooth_pitch);
-liner_h        = n_teeth * tooth_pitch;
-base_d         = liner_t - tooth_d;                  // wall behind the crests
-liner_z        = (collar_h - liner_h) / 2;           // centred in the collar
-liner_side     = post_d / 2 - liner_front - y_back_in;   // side leg length
-liner_studs    = [-12, 12];
+n_teeth        = floor((collar_h - 2 * pad_margin) / tooth_pitch);
+pad_h          = n_teeth * tooth_pitch;              // along the post
+pad_base       = pad_t - tooth_d;                    // base behind the crests
+pad_z          = (collar_h - pad_h) / 2;             // centred in the collar
+
+// The pads stop clear of the collar's inner corner fillets, which bulge into
+// the cavity by fillet_r. Sitting a flat pad across one would rock it.
+pad_back_w     = 2 * (hw_in - fillet_r - pad_clear);
+pad_side_y0    = y_back_in + fillet_r + pad_clear;
+pad_side_y1    = post_d / 2 - pad_front;
+pad_side_w     = pad_side_y1 - pad_side_y0;
 
 // ---- The hook ------------------------------------------------------------------
 // A stem rising out of the back wall at hook_rake, with an upturn at the end
@@ -541,15 +566,15 @@ assert(x_crest_seated < x_arc_45,
        "seated lip crest sits outboard of the corner's 45 deg point — it catches air");
 assert(lip_release > 1.0,
        "less than 1 mm of straight-pull travel holds the clip on");
-assert(post_d / 2 - liner_front < y_cam_start,
-       "the liner's side legs run into the lip's cam face");
+assert(pad_side_y1 < y_cam_start,
+       "the side pads run into the lip's cam face");
 assert(hook_rake > max_overhang_angle,
        "stem underside is shallower than the printer's overhang limit");
-assert(tooth_d < liner_t - 1.2,
-       "tooth valleys leave less than 1.2 mm of liner wall");
+assert(tooth_d < pad_t - 1.2,
+       "tooth valleys leave less than 1.2 mm of pad base");
 assert(tooth_d > post_d_max - post_d,
        "crests cannot absorb an oversize post; the post_d axis is otherwise rigid");
-assert(liner_t - preload > 0, "liner is thinner than the interference it sets");
+assert(pad_t - preload > 0, "pad is thinner than the interference it sets");
 assert(chamfer * 2 < lip_reach,
        "chamfered_extrude erodes by `chamfer`; the lip would vanish");
 assert(corner_r < lip_flat, "the lip's crest would be rounded away entirely");

@@ -11,7 +11,7 @@ SOURCES := $(wildcard src/*.scad) $(wildcard $(REPO)/lib/scad/*.scad)
 
 # One collar, three hooks. The collar is identical in all three, so a size is a
 # row in the table in params.scad and nothing else.
-PARTS   := clip_s clip_m clip_l liner
+PARTS   := clip_s clip_m clip_l pad_back pad_side
 
 PLATES     := petg tpu test
 PLATE_SCAD := src/plates.scad
@@ -24,7 +24,7 @@ DIMS_PART := dims
 # never meets at all — and a boolean check reports zero for both of those, which
 # is why the interference that MATTERS is measured by springcheck.py instead.
 FIT_SCAD  := tools/fitcheck.scad
-FIT_CASES := liner:TPU liner vs the collar it drops into
+FIT_CASES := pads:the three TPU pads vs the collar they sit in
 
 # The spring, and the catch. Neither is answerable by a fit check: one is a
 # force and the other is an overlap that only exists once the arms are sprung.

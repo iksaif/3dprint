@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// The two parts: the PETG clip (collar + hook) and the TPU liner.
+// The parts: the PETG clip (collar + hook) and three flat TPU pads.
 //
 // Both are modelled directly in their print orientation — z is the post's axis
 // AND the print axis, and both parts sit on z = 0 as written. Nothing is
@@ -41,16 +41,6 @@ function collar_pts() = [
 
 module collar_2d() { smooth2d(fillet_r, corner_r) polygon(collar_pts()); }
 
-// Blind pockets for the liner's studs, cut into the back wall's inner face.
-// Horizontal bores in this orientation, so teardrops — hole_y puts the point at
-// +Z for us rather than leaving the rotation to be got wrong by hand.
-module stud_holes() {
-    for (o = liner_studs)
-        hole_y(liner_stud_hole,
-               y_back_in - liner_stud_h - 0.5, y_back_in + 0.5,
-               o, collar_h / 2);
-}
-
 // A slot through each lip for a nylon cable tie. Not a teardrop and not a plain
 // rectangle: the profile is a rectangle with a 45 deg peak on top, so the
 // ceiling is strictly self-supporting rather than a short bridge that happens
@@ -73,7 +63,6 @@ module tie_slots() {
 module collar() {
     difference() {
         chamfered_extrude(collar_h, chamfer) collar_2d();
-        stud_holes();
         if (tie_slot) tie_slots();
     }
 }
@@ -179,77 +168,60 @@ module hook(s) {
 
 module clip(size = "m") { union() { collar(); hook(size_idx(size)); } }
 
-// ---------- the TPU liner ---------------------------------------------------
-// A U in three straight legs, each one the same prism: a (depth, z) profile
-// swept along the leg. Straight legs mean the sawtooth can be drawn in 2D and
-// extruded, which is the only reason the teeth are cheap enough to have.
+// ---------- the TPU pads ----------------------------------------------------
+// Three flat slabs: one for the back wall, two for the arms. Each is modelled
+// LYING DOWN, which is how it prints — x along the post, y across the face,
+// z the thickness — and moved onto its face only for the assembly and the fit
+// check.
 //
-// The teeth ramp inward going UP over tooth_rise and then step back square.
-// Both halves print: the ramp is material arriving gradually (a 68 deg wall at
-// these numbers) and the step is material stopping, which costs nothing. The
-// square face is the UPPER one, which is the face the post drives into when the
-// clip tries to slide down — the direction that matters.
-//
-// The crests are also the only compliance in the post_d direction. The lip face
-// and the back wall are two rigid surfaces a fixed distance apart, so a post at
-// post_d_max is absorbed by crushing crests and nothing else.
-// n_teeth, liner_h, base_d, liner_z and liner_side are all in params.scad — see
-// the note there about `use` not importing variables.
-//
-// Inner face of the profile: up the sawtooth, tooth by tooth.
-function tooth_pts() = [
-    for (k = [0 : n_teeth - 1], p = [0 : 2])
-        p == 0 ? [base_d,  k * tooth_pitch]
-      : p == 1 ? [liner_t, k * tooth_pitch + tooth_rise]
-      :          [base_d,  k * tooth_pitch + tooth_rise]
-];
-function liner_profile() = concat([[0, 0]], tooth_pts(), [[base_d, liner_h], [0, liner_h]]);
+// The teeth ramp up the post over tooth_rise, hold a flat crest for tooth_flat,
+// then step back square. Lying flat that profile is in (x, z), so at any print
+// height above the valley only the upper parts of the ramps are present and
+// each one shrinks as z rises. Nothing overhangs anything.
+function pad_profile() =
+    let (top = concat(
+            [for (k = [0 : n_teeth - 1], q = [0 : 3])
+                let (u = k * tooth_pitch)
+                q == 0 ? [u,                              pad_base]
+              : q == 1 ? [u + tooth_rise,                 pad_t]
+              : q == 2 ? [u + tooth_rise + tooth_flat,    pad_t]
+              :          [u + tooth_rise + tooth_flat,    pad_base]],
+            [[pad_h, pad_base]]))
+    concat([[0, 0], [pad_h, 0]], [for (i = [len(top) - 1 : -1 : 0]) top[i]]);
 
-// One leg: extruded along +X for `len`, depth running +Y from 0 to liner_t,
-// z from 0 to liner_h.
-module liner_leg(len) {
-    rotate([90, 0, 90]) linear_extrude(len, convexity = 8) polygon(liner_profile());
+// One pad, flat on the bed: x 0..pad_h, y 0..w, z 0..pad_t.
+module pad_flat(w) {
+    translate([0, w, 0]) rotate([90, 0, 0])
+        linear_extrude(w, convexity = 8) polygon(pad_profile());
 }
 
-// studs = false gives the same liner without them. The studs are a deliberate
-// 0.4 mm interference into their holes, so any fit check that includes them
-// reports overlap and tells you nothing about the surfaces that actually mate.
-// The collar's two inner corners are FILLETED — smooth2d(fillet_r, ...) rounds
-// every concave corner, which is right for the part and means the collar bulges
-// into the cavity there by fillet_r * (sqrt(2) - 1). A liner drawn as three
-// square legs fills that quadrant and overlaps it, by exactly
-// (1 - pi/4) * fillet_r^2 per corner per mm of height: 12 mm^3 here, which is
-// what fitcheck.py reported and no render would ever have shown.
+module pad_back_flat() { pad_flat(pad_back_w); }
+module pad_side_flat() { pad_flat(pad_side_w); }
+
+// Onto their faces. Written as explicit matrices rather than a stack of
+// rotates: each one says outright which local axis becomes which global one,
+// and the thickness axis — the one that must end up pointing AT the post — is
+// the row that is easy to get backwards and impossible to spot in a render.
 //
-// A quarter-disc of radius fillet_r cut at the corner itself covers the whole
-// fillet, since the fillet's deepest reach from the corner is only 0.41 * r.
-module liner(studs = true) {
-    difference() {
-        liner_legs();
-        for (m = [0, 1]) mirror([m, 0, 0])
-            translate([hw_in, y_back_in, -1])
-                cylinder(r = fillet_r + slide_clearance, h = collar_h + 2);
-    }
-    if (studs)
-        for (o = liner_studs)
-            translate([o, y_back_in, collar_h / 2]) rotate([90, 0, 0])
-                cylinder(d = liner_stud_d, h = liner_stud_h);
+//   back   local x -> +z (up the post), y -> +x, z -> +y off the wall
+//   right  local x -> +z,               y -> +y, z -> -x off the arm
+module pad_place(where) {
+    if (where == "back")
+        multmatrix([[0, 1, 0, -pad_back_w / 2],
+                    [0, 0, 1, y_back_in],
+                    [1, 0, 0, pad_z]]) children();
+    else if (where == "right")
+        multmatrix([[0, 0, -1, hw_in],
+                    [0, 1,  0, pad_side_y0],
+                    [1, 0,  0, pad_z]]) children();
+    else
+        mirror([1, 0, 0]) pad_place("right") children();
 }
 
-module liner_legs() {
-    translate([0, 0, liner_z]) {
-        translate([-hw_in, y_back_in, 0]) liner_leg(2 * hw_in);        // back
-        // Each side leg is the same prism turned a quarter turn. The turn has
-        // to be +90 and not -90, and that is not a detail: liner_leg runs its
-        // DEPTH along local +Y, and rotate([0,0,-90]) sends local +Y to global
-        // +X — outboard, into the arm's material. The teeth then face into the
-        // PETG instead of onto the post, which is a liner that grips nothing
-        // and a fit check full of overlap. rotate([0,0,90]) sends local +Y to
-        // global -X, which is inboard off the arm's face, where the post is.
-        translate([hw_in, y_back_in, 0]) rotate([0, 0, 90]) liner_leg(liner_side);
-        mirror([1, 0, 0])
-            translate([hw_in, y_back_in, 0]) rotate([0, 0, 90]) liner_leg(liner_side);
-    }
+module pads() {
+    pad_place("back")  pad_back_flat();
+    pad_place("right") pad_side_flat();
+    pad_place("left")  pad_side_flat();
 }
 
 // ---------- the post --------------------------------------------------------
@@ -264,9 +236,9 @@ module post_mock() { color("#c8c8c8", 0.4) post_solid(); }
 
 // ---------- the assembly, as it actually sits -------------------------------
 // Parts are modelled UNSPRUNG, because that is what gets printed. Drawn that
-// way against a nominal post, the post reads as buried 2.5 mm into the liner on
+// way against a nominal post, the post reads as buried 2.5 mm into the pads on
 // each side, which looks like a mistake and is not one: it is the preload, and
-// on a real post the arms flex out by exactly that much and carry the liner
+// on a real post the arms flex out by exactly that much and carry the pads
 // with them. Nothing is crushed — the teeth are only 0.8 mm proud.
 //
 // A review render that shows 2.5 mm of interference is still a bad review

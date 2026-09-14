@@ -2,14 +2,13 @@
 // contact — a face resting on a face — so any real overlap shows up as a solid
 // with measurable volume.
 //
-// liner   the TPU liner against the collar it sits in. Its three outer faces
-//         are coincident with the back wall and the two arm faces, and its
-//         teeth all face the other way, so a correct liner reports zero. This
-//         is the case that catches the leg rotated the wrong way round, which
-//         puts the teeth INTO the arms and is invisible in a render because the
-//         liner and the collar are much the same colour. The studs are left
-//         off: they are a deliberate 0.4 mm interference and would mask
-//         everything else.
+// pads    the three TPU pads against the collar they sit in. Each pad's flat
+//         back is coincident with the face it rests on and its teeth all face
+//         the other way, so a correct set reports zero. This is the case that
+//         catches a pad placed with its thickness axis pointing the wrong way —
+//         teeth INTO the PETG instead of onto the post — which is invisible in
+//         a render because pad and collar are much the same colour, and which
+//         the U version got wrong exactly once.
 //
 // catch   NOT a "must be zero" case, and not read by fitcheck.py at all —
 //         springcheck.py drives it. The lips are placed where they sit once the
@@ -22,7 +21,7 @@
 include <../src/params.scad>
 use <../src/clip.scad>
 
-which = "liner";
+which = "pads";
 pull  = 0;      // mm the clip has been pulled OFF the post, for `catch`
 
 // These cases are measured by VOLUME, not looked at, and the collar is a
@@ -31,7 +30,7 @@ pull  = 0;      // mm the clip has been pulled OFF the post, for `catch`
 // being compared.
 $fn = 48;
 
-if (which == "liner")
-    intersection() { collar(); liner(false); }
+if (which == "pads")
+    intersection() { collar(); pads(); }
 else if (which == "catch")
     intersection() { seated_lips(pull); post_solid(); }

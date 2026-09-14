@@ -22,10 +22,10 @@ module at(pos, mn) { translate([pos[0] - mn[0], pos[1] - mn[1], -mn[2]]) childre
 
 // Measured minimum corners as exported. `make check` prints these (tools/bbox.py);
 // if a part changes size, re-read them from there rather than guessing.
-MIN_S     = [-27.3, -45.0, 0.0];   //  54.6 x 75.9
-MIN_M     = [-27.3, -49.0, 0.0];   //  54.6 x 79.9
-MIN_L     = [-27.3, -55.0, 0.0];   //  54.6 x 85.9
-MIN_LINER = [-20.5, -26.0, 4.0];   //  41.0 x 40.0  (sits at z 4, dropped to 0)
+MIN_S     = [-27.3, -40.4, 0.0];   //  54.6 x 72.7
+MIN_M     = [-27.3, -46.8, 0.0];   //  54.6 x 79.2
+MIN_L     = [-27.3, -50.8, 0.0];   //  54.6 x 83.2
+MIN_PAD   = [  0.0,   0.0, 0.0];   //  pads are modelled from the origin, flat
 
 W = 54.6;   // every clip is the same width — the collar does not change
 
@@ -33,8 +33,15 @@ if (plate == "petg") {              // all three hooks, one bed
     at([            0, 0], MIN_S) clip("s");
     at([  W +     gap, 0], MIN_M) clip("m");
     at([2 * W + 2 * gap, 0], MIN_L) clip("l");
-} else if (plate == "tpu") {        // one liner per clip
-    for (i = [0 : 2]) at([i * (41 + gap), 0], MIN_LINER) liner();
+} else if (plate == "tpu") {        // one set of three pads per clip, all flat
+    // Nothing here is on edge: every pad lies on its back with the teeth up,
+    // which is the whole reason the U was split into three.
+    for (i = [0 : 2]) {
+        at([i * (pad_h + gap), 0], MIN_PAD) pad_back_flat();
+        at([i * (pad_h + gap), pad_back_w + gap], MIN_PAD)      pad_side_flat();
+        at([i * (pad_h + gap), pad_back_w + pad_side_w + 2 * gap], MIN_PAD)
+            pad_side_flat();
+    }
 } else if (plate == "test") {
     // Print this one FIRST. It is a whole working clip, and the only things
     // worth learning from a first print are things a whole one tells you: how
@@ -42,5 +49,7 @@ if (plate == "petg") {              // all three hooks, one bed
     // and whether it holds a kilo. None of that can be coupon-tested, because
     // all three are properties of the arm spring over its full length.
     at([        0, 0], MIN_M)     clip("m");
-    at([W + gap, 0], MIN_LINER) liner();
+    at([W + gap, 0], MIN_PAD) pad_back_flat();
+    at([W + gap, pad_back_w + gap], MIN_PAD) pad_side_flat();
+    at([W + gap, pad_back_w + pad_side_w + 2 * gap], MIN_PAD) pad_side_flat();
 }

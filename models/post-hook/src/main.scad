@@ -3,7 +3,7 @@
 //
 //   openscad -D 'part="clip_m"' -o clip_m.stl main.scad
 //
-// part:  clip_s | clip_m | clip_l | liner | assembly | dims
+// part:  clip_s | clip_m | clip_l | pad_back | pad_side | assembly | dims
 //
 // One collar, three hooks. Both printable parts are modelled in their print
 // orientation already — z is the post's axis AND the print axis — so the
@@ -18,24 +18,25 @@ show_post = true;
 show_size = "m";        // which hook the assembly view wears
 // Shear the arms out to where they sit on a real post. Off shows the parts as
 // PRINTED, which is honest about the geometry and misleading about the fit —
-// the post then reads as buried `preload` deep in the liner on each side.
+// the post then reads as buried `preload` deep in the pads on each side.
 show_seated = true;
 
 c_clip  = "#3f4854";
-c_liner = "#1f2937";
+c_pad   = "#1f2937";
 
 if (part == "clip_s")      clip("s");
 else if (part == "clip_m") clip("m");
 else if (part == "clip_l") clip("l");
-else if (part == "liner")  liner();
+else if (part == "pad_back") pad_back_flat();
+else if (part == "pad_side") pad_side_flat();
 else if (part == "assembly") {
     if (show_post) post_mock();
     if (show_seated) {
         color(c_clip)  { seated() collar(); hook(size_idx(show_size)); }
-        color(c_liner) seated() liner();
+        color(c_pad) seated() pads();
     } else {
         color(c_clip)  clip(show_size);
-        color(c_liner) liner();
+        color(c_pad) pads();
     }
 } else if (part == "dims") {
     kg = load_kg;
@@ -45,8 +46,8 @@ else if (part == "assembly") {
              y_arm_end - y_back_out, " x ", collar_h, " mm"));
 
     // ---- the fit, as the three surfaces that decide it --------------------
-    echo(str("arm inner faces ", 2 * hw_in, " mm apart unloaded, post + liner is ",
-             post_w + 2 * liner_t, " -> each arm springs ", preload, " mm"));
+    echo(str("arm inner faces ", 2 * hw_in, " mm apart unloaded, post + pads is ",
+             post_w + 2 * pad_t, " -> each arm springs ", preload, " mm"));
     echo(str("lip reaches ", lip_reach, " mm inboard; seated its crest sits at x ",
              x_crest_seated, ", inboard of the corner arc's 45 deg point at ",
              round(x_arc_45 * 100) / 100, "  (it must be, or the cam meets nothing)"));
@@ -63,17 +64,17 @@ else if (part == "assembly") {
              " is absorbed by the cams — a post ", post_d_max - post_d,
              " mm deep just springs the arms ",
              round((post_d_max - post_d) * tan(lip_cam) * 100) / 100,
-             " mm further, and the liner's ", tooth_d,
+             " mm further, and the pads' ", tooth_d,
              " mm crests take up the rest"));
 
-    echo(str("liner: ", n_teeth, " teeth at ", tooth_pitch, " mm over ", liner_h,
-             " mm, base wall ", base_d, " mm, ", liner_side,
-             " mm side legs stopping ", liner_front,
+    echo(str("pads: 3 flat, ", n_teeth, " teeth at ", tooth_pitch, " mm over ",
+             pad_h, " mm, base ", pad_base, " mm; back ", pad_back_w,
+             " wide, sides ", pad_side_w, " long, stopping ", pad_front,
              " mm short of the post's front"));
-    echo(str("liner goes in through the ", 2 * (hw_in - lip_reach),
-             " mm gap between the lips, being ", 2 * hw_in,
-             " mm wide: squeeze it ", 2 * lip_reach, " mm  (TPU, ", base_d,
-             " mm thick)"));
+    echo(str("pads print FLAT, teeth up: ", pad_h, " x ", pad_back_w, " and 2 x ",
+             pad_h, " x ", pad_side_w, " mm, all ", pad_t,
+             " mm thick  (the U they replaced was a ", pad_h,
+             " mm tall shell)"));
 
     if (tie_slot)
         echo(str("cable tie: ", tie_w, " x ", tie_t,

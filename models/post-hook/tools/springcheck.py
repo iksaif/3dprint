@@ -109,7 +109,7 @@ def main():
 
     arm_t, h, E = p["arm_t"], p["collar_h"], p["petg_e_mpa"]
     preload, lip_reach = p["preload"], p["lip_reach"]
-    liner_t, post_w, post_d = p["liner_t"], p["post_w"], p["post_d"]
+    pad_t, post_w, post_d = p["pad_t"], p["post_w"], p["post_d"]
     r = p["post_corner_r"]
     load = p["load_kg"] * G
     mu = p["mu_tpu"]
@@ -117,10 +117,10 @@ def main():
     # Rederived exactly as params.scad does, and only from literals — anything
     # that file computes is recomputed here rather than scraped, because the
     # scraper only sees plain numbers and would silently miss an expression.
-    hw_in = post_w / 2 + liner_t - preload
+    hw_in = post_w / 2 + pad_t - preload
     cam_c = post_w / 2 + post_d / 2 - 2 * r + math.sqrt(2) * (r + p["lip_clear"])
     y_cam_start = cam_c - preload - hw_in
-    arm_free = y_cam_start + lip_reach / 2 + post_d / 2 + liner_t
+    arm_free = y_cam_start + lip_reach / 2 + post_d / 2 + pad_t
     spread_peak = post_w / 2 - (hw_in - lip_reach)
     x_crest_seated = hw_in + preload - lip_reach
     lip_release = post_w / 2 - x_crest_seated
