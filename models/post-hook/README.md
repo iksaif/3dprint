@@ -7,7 +7,7 @@ it off again.
 |  |  |
 |---|---|
 | **Parts** | `clip_s` / `clip_m` / `clip_l` (PETG) + `pad_back` + 2 × `pad_side` (TPU, 1.2 mm) |
-| **Load** | 1 kg, with a 2.8× margin on the friction that carries it |
+| **Load** | 1 kg, with a 3.0× margin on the friction that carries it |
 | **Fixings** | none. A cable tie is optional and the slots are there for it |
 | **Supports** | none, on any part |
 
@@ -29,7 +29,7 @@ their inner faces are drawn 2 × 2.5 mm closer together than the post plus its
 pads, so putting it on springs them open and they squeeze back. But that squeeze
 is only *half* the load path, and assuming it was all of it is what broke the
 first print — see below. The other half is the load's own moment, which presses
-the back pad and the lips into the post with about 15 N each. Together: 28 N of
+the back pad and the lips into the post with about 15 N each. Together: 30 N of
 friction against a 9.8 N load. Nothing is clamped and nothing is bolted.
 
 Each arm ends in a lip whose retention face is a **45° cam tangent to the post's
@@ -59,8 +59,37 @@ profile so it follows the rake instead of standing on the bed.
 
 ## What the first print taught
 
-It broke going on, and the measurement that explains it is blunt: with the pads
-fitted the mouth was **35 mm for a 40 mm post**.
+It broke going on, and there were two separate things wrong — one about how hard
+the arms were being asked to spread, and one about *where*.
+
+### The pads reached back to where the arm cannot move
+
+This is the one that actually stopped the post going in, and no stress number
+would have found it.
+
+A cantilever's deflection at its root is **zero**. The fraction of the tip's
+deflection available at a distance *u* along it is `(3r² − r³)/2` with `r = u/L`,
+and it collapses fast — at a tenth of the way along, under 2%. The side pads ran
+the full length of the arm, starting 3 mm from the root, where supplying 1 mm of
+interference would have needed over **100 mm** of tip deflection. The post was
+not being gripped back there. It was jamming against something that could not
+open, whatever the arm's stress said.
+
+So the interference now lives only where there is compliance to supply it: the
+side pads are 12 mm long and sit at the front of the arms, bearing at 0.61–0.91
+of the way along. Behind them the arm's own inner face clears the post by
+`pad_t − preload` and touches nothing.
+
+It pays for itself twice. The arm is `(1/0.76)³ = 2.3×` stiffer where the pads
+actually bear than at its tip, so **half the interference now gives more grip
+than 1.0 mm did** — and `springcheck.py` had been quietly understating both the
+force and the root moment by using the tip stiffness for a load that is nowhere
+near the tip. There is an assert on the deflection available at the pad's back
+edge now.
+
+### And the opening was set by the wrong parameter
+
+With the pads fitted the mouth was **35 mm for a 40 mm post**.
 
 That number is not the pads. The pad thickness cancels straight out of it:
 
@@ -71,7 +100,7 @@ opening = post_w − 2·preload              ← pad_t is gone
 ```
 
 40 − 2×2.5 = 35. Halving `pad_t` would have changed nothing; the only parameter
-that opens the mouth is `preload`, and it was 4× too big.
+that opens the mouth is `preload`, and it was 5× too big.
 
 **Why it was too big.** It had been sized from a friction budget that
 deliberately left the load's own moment out as "conservative". That is not
@@ -84,11 +113,10 @@ the preload contribution drops too far below the moment's.
 
 | | before | now |
 |---|---|---|
-| opening | 35 mm | **38 mm** |
-| preload per arm | 2.5 mm | 1.0 mm |
-| spread to fit | 4.5 mm | 2.5 mm |
-| peak root stress | 36 MPa (1.38×) | **21 MPa (2.35×)** |
-| push to fit | 5.9 kgf | 3.6 kgf |
+| preload per arm | 2.5 mm | 0.5 mm |
+| spread to fit | 4.5 mm | 2.0 mm |
+| peak root stress | 36 MPa (1.38×) | **17 MPa (2.93×)** |
+| push to fit | 5.9 kgf | 2.9 kgf |
 
 A second coupling bit on the way through, worth recording because it was silent:
 the catch is `lip_reach − pad_t`, and `lip_reach` had been left as a literal. So
@@ -116,9 +144,11 @@ Flat also kills an assembly trap nothing on the part warned about: a sawtooth is
 directional twice over — which face goes to the post, and which end is up — and
 fitted upside down its steps resist the one direction that does not matter.
 
-What it costs is the teeth's compliance, which used to absorb `post_w` tolerance
-by crushing. That now comes out of the preload margin, which is why `preload` is
-1.0 rather than the 0.5 the grip alone would need.
+What it costs is the teeth's compliance, which used to absorb `post_w`
+tolerance by crushing. That now comes out of the arm instead — which is
+affordable only because the pads were moved to the compliant end of it, where
+the stiffness is high enough that a 0.5 mm nominal interference still leaves
+grip on an undersize post.
 
 ## Where the stress goes
 
@@ -200,7 +230,7 @@ the mouth, not on the reach.
    fit, with a dab of glue if they will not stay put. Once the clip is on the
    post there is nowhere for them to go, so this only matters until you fit it.
 2. Offer the clip up to the post and press. The lead-in ramps spread the arms;
-   about 3.6 kgf, two thumbs, and it clicks over the corners.
+   about 2.9 kgf, two thumbs, and it clicks over the corners.
 3. To remove: squeeze the two thumb tabs outward and lift it off.
 
 ### The cable tie (optional)
@@ -286,13 +316,14 @@ test a catch is to move the part until it fouls.
 From `make check`, on the default 40 × 40 post:
 
 ```
-arm spring   3.6 x 36 mm section, 41.1 mm free   ->  12.1 N/mm per arm
-grip         15 N preload + 13 N from the moment ->  2.8x on 1 kg
-fitting      2.5 mm of spread, 30 deg lead-in    ->  3.6 kgf of push
+arm spring   3.6 x 36 mm section, 41.1 mm free   ->  12.1 N/mm at the TIP
+pads bear    0.61-0.91 along the arm             ->  27.7 N/mm where it counts
+grip         17 N preload + 13 N from the moment ->  3.0x on 1 kg
+fitting      2.0 mm of spread, 30 deg lead-in    ->  2.9 kgf of push
 holding on   1.5 mm of travel over a 45 deg cam  ->  3.7 kgf of straight pull
-strain       0.80% peak while fitting, 0.32% sustained  (PETG yields ~2.5%)
-root stress  fillet r2.5, Kt 1.33            ->  21 MPa peak, 2.35x on yield
-                                                  9 MPa sustained
+strain       0.64% peak while fitting, 0.16% sustained  (PETG yields ~2.5%)
+root stress  fillet r2.5, Kt 1.33            ->  17 MPa peak, 2.93x on yield
+                                                  7 MPa sustained
 catch        0 mm^3 at rest (tangent), 54 mm^3 pulled 1 mm off
 ```
 

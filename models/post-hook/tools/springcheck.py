@@ -150,8 +150,30 @@ def main():
     # The second is the larger of the two and was excluded as "conservative".
     # It is not conservative to leave out the mechanism doing most of the work;
     # it just moves the error into the parameter that compensates.
-    normal = k * preload
+    # NOT k * preload. k is the stiffness at the arm's TIP, and the pads do not
+    # touch there — they sit over pad_side_len ending pad_front short of the
+    # post's front face, because a cantilever has no deflection to give near its
+    # root. The stiffness seen at a fraction r along is k / r^3, so where the
+    # pads actually bear the arm is materially stiffer and a given interference
+    # buys more force. Using the tip figure understates the grip and, worse,
+    # understates the root moment it comes with.
+    pad_y1 = post_d / 2 - p["pad_front"]
+    pad_y0 = pad_y1 - p["pad_side_len"]
+    y_back_in = -(post_d / 2 + pad_t)
+    r0 = (pad_y0 - y_back_in) / arm_free
+    r1 = (pad_y1 - y_back_in) / arm_free
+    r_mid = (r0 + r1) / 2
+    shape = (3 * r0 ** 2 - r0 ** 3) / 2      # deflection available at the back edge
+
+    k_pad = k / r_mid ** 3
+    normal = k_pad * preload
     f_preload = 2 * normal * mu
+    print(f"  pads bear at {r0:.2f}-{r1:.2f} along the arm, so they see "
+          f"{k_pad:.1f} N/mm, not the tip's {k:.1f}; at the back edge the arm "
+          f"can supply {shape:.0%} of a tip deflection")
+    if shape < 0.4:
+        fails.append(f"the pads reach back to where only {shape:.0%} of the "
+                     f"tip's deflection is available — they will jam, not grip")
 
     # The load sits mid-cradle on whichever hook is fitted; the deepest one is
     # the worst case. Read from the size table rather than restated, so a new
@@ -224,7 +246,13 @@ def main():
     # stress at the same imposed deflection.
     r_fil = p["fillet_r"]
     kt = 1 + 0.27 * (r_fil / arm_t) ** -0.55
-    s_sus, s_peak = E * sustained * kt, E * peak * kt
+    # Peak is the lips going over the post, which IS a tip deflection. Sustained
+    # is the pads pressing, which is not: the load sits r_mid along the arm, so
+    # the root moment is normal * (r_mid * arm_free) rather than anything the
+    # tip-deflection strain would give.
+    sect = h * arm_t ** 2 / 6
+    s_peak = E * peak * kt
+    s_sus = normal * (r_mid * arm_free) / sect * kt
     yld = p["petg_yield_mpa"]
     print(f"  root stress: fillet r{r_fil} on a {arm_t} mm arm is r/t "
           f"{r_fil / arm_t:.2f}, Kt {kt:.2f} -> {s_peak:.0f} MPa peak while "

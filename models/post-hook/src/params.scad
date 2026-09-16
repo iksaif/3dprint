@@ -91,7 +91,21 @@ pad_margin     = 3;     // pads shorter than the collar, top and bottom
 // Side pads stop this far short of the post's front face. Not cosmetic: they
 // have to end BEHIND where the lip's cam face leaves the arm (y_cam_start), or
 // pad and lip occupy the same millimetre and the fit check lights up.
-pad_front      = 6;
+pad_front      = 4;
+// How long the SIDE pads are, and the reason they are short and forward rather
+// than running the length of the arm.
+//
+// A cantilever's deflection at its root is zero. The deflection available at a
+// distance u along it is cant_shape(u/L) of the tip's, and that falls away
+// fast: at a tenth of the way along it is under 2%. The side pads used to start
+// 3 mm from the root, where supplying 1 mm of interference would have needed
+// over 100 mm of tip deflection. The post was not being gripped back there — it
+// was jamming on something that could not open, whatever the arm's stress said.
+//
+// So the interference lives only where there is compliance to supply it. Behind
+// the pads the arm's own inner face clears the post by pad_t - preload and
+// touches nothing.
+pad_side_len   = 12;
 pad_clear      = 0.5;   // off the collar's inner corner fillets
 pad_corner_r   = 2;     // plan rounding, so they are pleasant to handle
 
@@ -136,7 +150,8 @@ chamfer        = 0.8;   // top and bottom edge chamfer. Must stay under
 // therefore what generates the friction that stops it sliding down. It is set
 // by geometry alone: the arms' unloaded inner faces are 2*preload closer
 // together than the post plus its pads.
-// 1.0, down from 2.5, and this was the error that broke the first print.
+// 0.5. This has now been wrong twice, in two different ways, and both are worth
+// keeping because they are different mistakes.
 //
 // The opening a post has to be forced into is post_w - 2 * preload — pad_t
 // cancels out of it entirely — so 2.5 meant presenting a 35 mm mouth to a 40 mm
@@ -150,10 +165,14 @@ chamfer        = 0.8;   // top and bottom edge chamfer. Must stay under
 // friction on its own — which is why the clip nearly held a helmet with NO pads
 // and no preload at all.
 //
-// So the preload only has to top that up to a sane margin. 0.5 mm would do it;
-// 1.0 is what keeps the margin when a post comes in under nominal, now that
-// there are no teeth to crush.
-preload        = 1.0;
+// So the preload only has to top that up to a sane margin.
+//
+// SECOND, at 1.0 it was still assuming the arm could supply that interference
+// everywhere the pad touched. It cannot — see pad_side_len. With the pads moved
+// to the compliant end of the arm the contact sits around 0.76 of the way
+// along, where the arm is (1/0.76)^3 = 2.3x stiffer than at its tip, so half
+// the interference gives more force than 1.0 mm did before.
+preload        = 0.5;
 
 // ---- The snap lips -------------------------------------------------------------
 // Each arm ends in a lip that reaches inward past the post's front face.
@@ -317,12 +336,24 @@ spread_peak    = post_w / 2 - (hw_in - lip_reach);
 pad_h          = collar_h - 2 * pad_margin;          // along the post
 pad_z          = (collar_h - pad_h) / 2;             // centred in the collar
 
-// The pads stop clear of the collar's inner corner fillets, which bulge into
-// the cavity by fillet_r. Sitting a flat pad across one would rock it.
+// The back pad stops clear of the collar's inner corner fillets, which bulge
+// into the cavity by fillet_r. Sitting a flat pad across one would rock it.
 pad_back_w     = 2 * (hw_in - fillet_r - pad_clear);
-pad_side_y0    = y_back_in + fillet_r + pad_clear;
+
+// The side pads are anchored at their FRONT end and run back pad_side_len, so
+// they sit on the compliant end of the arm rather than at the rigid root.
 pad_side_y1    = post_d / 2 - pad_front;
-pad_side_w     = pad_side_y1 - pad_side_y0;
+pad_side_y0    = pad_side_y1 - pad_side_len;
+pad_side_w     = pad_side_len;
+
+// Tip-loaded cantilever deflection shape: the fraction of the TIP's deflection
+// available at a fraction r of the way along. This is the curve that makes a
+// full-length pad impossible and a short forward one fine.
+function cant_shape(r) = (3 * r * r - r * r * r) / 2;
+pad_r0         = (pad_side_y0 - y_back_in) / arm_free;   // pad's back edge
+pad_r1         = (pad_side_y1 - y_back_in) / arm_free;   // ... and its front
+pad_shape      = cant_shape(pad_r0);      // the worst point on the pad
+pad_r_mid      = (pad_r0 + pad_r1) / 2;
 
 // ---- The hook ------------------------------------------------------------------
 // A stem rising out of the back wall at hook_rake, with an upturn at the end
@@ -594,13 +625,24 @@ assert(lip_release > 1.0,
        "less than 1 mm of straight-pull travel holds the clip on");
 assert(pad_side_y1 < y_cam_start,
        "the side pads run into the lip's cam face");
+// The one the first print actually failed on. A pad reaching back to where the
+// arm cannot deflect does not grip there, it jams there.
+assert(pad_shape > 0.4,
+       str("side pads reach back to ", pad_r0,
+           " of the arm, where only ", pad_shape,
+           " of the tip's deflection is available — shorten pad_side_len"));
+assert(pad_side_y0 > y_back_in + fillet_r + pad_clear,
+       "the side pads reach into the collar's inner corner fillet");
 assert(hook_rake > max_overhang_angle,
        "stem underside is shallower than the printer's overhang limit");
 // post_d tolerance used to be absorbed by the teeth crushing. It is not any
 // more, and it does not need to be: the 45 deg cams made that axis elastic, so
 // a deeper post just springs the arms a little further.
-assert((post_d_max - post_d) * tan(lip_cam) < preload,
-       "an oversize post springs the arms further than the whole preload");
+// An oversize post pushes the cams and spreads the arms a little further while
+// seated. Measured against the spread FITTING already demands, not against the
+// preload — the preload is a different axis and comparing the two says nothing.
+assert((post_d_max - post_d) * tan(lip_cam) < spread_peak,
+       "an oversize post costs more arm travel than fitting the clip does");
 assert(pad_t - preload > 0, "pad is thinner than the interference it sets");
 assert(chamfer * 2 < lip_reach,
        "chamfered_extrude erodes by `chamfer`; the lip would vanish");
