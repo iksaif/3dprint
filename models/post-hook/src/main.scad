@@ -46,6 +46,13 @@ else if (part == "assembly") {
              y_arm_end - y_back_out, " x ", collar_h, " mm"));
 
     // ---- the fit, as the three surfaces that decide it --------------------
+    // THE number the first physical test turned on. The mouth a post has to be
+    // forced into is post_w - 2*preload, and pad_t cancels out of it entirely —
+    // so thinning the pads does not open it by a micron. At preload 2.5 this
+    // read 35 mm for a 40 mm post and the arm snapped getting it on.
+    echo(str("opening: ", post_w - 2 * preload, " mm for a ", post_w,
+             " mm post — ", 2 * preload, " mm of squeeze, ", preload,
+             " per arm  (pad_t cancels; only preload sets this)"));
     echo(str("arm inner faces ", 2 * hw_in, " mm apart unloaded, post + pads is ",
              post_w + 2 * pad_t, " -> each arm springs ", preload, " mm"));
     echo(str("lip reaches ", lip_reach, " mm inboard; seated its crest sits at x ",
@@ -64,17 +71,14 @@ else if (part == "assembly") {
              " is absorbed by the cams — a post ", post_d_max - post_d,
              " mm deep just springs the arms ",
              round((post_d_max - post_d) * tan(lip_cam) * 100) / 100,
-             " mm further, and the pads' ", tooth_d,
-             " mm crests take up the rest"));
+             " mm further — the cams make that axis elastic, so nothing has to ",
+             "crush to absorb it"));
 
-    echo(str("pads: 3 flat, ", n_teeth, " teeth at ", tooth_pitch, " mm over ",
-             pad_h, " mm, base ", pad_base, " mm; back ", pad_back_w,
-             " wide, sides ", pad_side_w, " long, stopping ", pad_front,
-             " mm short of the post's front"));
-    echo(str("pads print FLAT, teeth up: ", pad_h, " x ", pad_back_w, " and 2 x ",
-             pad_h, " x ", pad_side_w, " mm, all ", pad_t,
-             " mm thick  (the U they replaced was a ", pad_h,
-             " mm tall shell)"));
+    echo(str("pads: 3 plain flat slabs, ", pad_t, " mm thick — back ", pad_h,
+             " x ", pad_back_w, ", sides 2 x ", pad_h, " x ", pad_side_w,
+             " mm, stopping ", pad_front, " mm short of the post's front"));
+    echo(str("no teeth and no orientation: both faces are the same, so there is ",
+             "no wrong way round to fit one"));
 
     if (tie_slot)
         echo(str("cable tie: ", tie_w, " x ", tie_t,

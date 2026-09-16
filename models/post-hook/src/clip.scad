@@ -26,6 +26,7 @@ function collar_pts() = [
     [ x_out,            y_arm_end - tab_len],   // up the outer face
     [ x_out + tab_out,  y_arm_end],             // thumb tab flare
     [ hw_in,            y_arm_end],             // the arm's end face
+    [ hw_in,            y_ramp_top],            // the nose carrying the tie slot
     [ hw_in - lip_reach, y_lip_end],            // down the lead-in ramp
     [ hw_in - lip_reach, y_crest0],             // the crest
     [ hw_in,            y_cam_start],           // the 45 deg cam onto the corner
@@ -34,6 +35,7 @@ function collar_pts() = [
     [-hw_in,            y_cam_start],
     [-hw_in + lip_reach, y_crest0],
     [-hw_in + lip_reach, y_lip_end],
+    [-hw_in,            y_ramp_top],
     [-hw_in,            y_arm_end],
     [-x_out - tab_out,  y_arm_end],
     [-x_out,            y_arm_end - tab_len],
@@ -172,27 +174,16 @@ module clip(size = "m") { union() { collar(); hook(size_idx(size)); } }
 // Three flat slabs: one for the back wall, two for the arms. Each is modelled
 // LYING DOWN, which is how it prints — x along the post, y across the face,
 // z the thickness — and moved onto its face only for the assembly and the fit
-// check.
+// check. At pad_t they are six layers each.
 //
-// The teeth ramp up the post over tooth_rise, hold a flat crest for tooth_flat,
-// then step back square. Lying flat that profile is in (x, z), so at any print
-// height above the valley only the upper parts of the ramps are present and
-// each one shrinks as z rises. Nothing overhangs anything.
-function pad_profile() =
-    let (top = concat(
-            [for (k = [0 : n_teeth - 1], q = [0 : 3])
-                let (u = k * tooth_pitch)
-                q == 0 ? [u,                              pad_base]
-              : q == 1 ? [u + tooth_rise,                 pad_t]
-              : q == 2 ? [u + tooth_rise + tooth_flat,    pad_t]
-              :          [u + tooth_rise + tooth_flat,    pad_base]],
-            [[pad_h, pad_base]]))
-    concat([[0, 0], [pad_h, 0]], [for (i = [len(top) - 1 : -1 : 0]) top[i]]);
-
-// One pad, flat on the bed: x 0..pad_h, y 0..w, z 0..pad_t.
+// One pad, flat on the bed: x 0..pad_h, y 0..w, z 0..pad_t. A plain rounded
+// slab — no profile, no teeth, no orientation to get wrong. Both faces are the
+// same, so there is no wrong way round to fit it.
 module pad_flat(w) {
-    translate([0, w, 0]) rotate([90, 0, 0])
-        linear_extrude(w, convexity = 8) polygon(pad_profile());
+    linear_extrude(pad_t) translate([pad_corner_r, pad_corner_r])
+        offset(pad_corner_r) offset(-pad_corner_r)
+            translate([-pad_corner_r, -pad_corner_r])
+                square([pad_h, w]);
 }
 
 module pad_back_flat() { pad_flat(pad_back_w); }
@@ -205,6 +196,10 @@ module pad_side_flat() { pad_flat(pad_side_w); }
 //
 //   back   local x -> +z (up the post), y -> +x, z -> +y off the wall
 //   right  local x -> +z,               y -> +y, z -> -x off the arm
+//
+// With flat pads a reversed thickness axis no longer ruins the grip — both
+// faces are the same — but it would still bury the pad in the PETG, which is
+// what the fit check is for.
 module pad_place(where) {
     if (where == "back")
         multmatrix([[0, 1, 0, -pad_back_w / 2],

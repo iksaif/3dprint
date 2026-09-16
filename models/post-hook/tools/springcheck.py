@@ -108,7 +108,7 @@ def main():
     fails = []
 
     arm_t, h, E = p["arm_t"], p["collar_h"], p["petg_e_mpa"]
-    preload, lip_reach = p["preload"], p["lip_reach"]
+    preload, lip_catch = p["preload"], p["lip_catch"]
     pad_t, post_w, post_d = p["pad_t"], p["post_w"], p["post_d"]
     r = p["post_corner_r"]
     load = p["load_kg"] * G
@@ -117,6 +117,7 @@ def main():
     # Rederived exactly as params.scad does, and only from literals — anything
     # that file computes is recomputed here rather than scraped, because the
     # scraper only sees plain numbers and would silently miss an expression.
+    lip_reach = pad_t + lip_catch
     hw_in = post_w / 2 + pad_t - preload
     cam_c = post_w / 2 + post_d / 2 - 2 * r + math.sqrt(2) * (r + p["lip_clear"])
     y_cam_start = cam_c - preload - hw_in
@@ -136,14 +137,46 @@ def main():
           f"I = {I:.0f} mm^4 -> {k:.1f} N/mm per arm")
 
     # ---- 1. grip -----------------------------------------------------------
+    # TWO sources, and getting this wrong by leaving the second one out is what
+    # broke the first print: the preload was sized to carry the load on friction
+    # alone, which needed 2.5 mm of interference per arm.
+    #
+    #   preload  the arms squeezing the pads onto the post. Load-independent.
+    #   moment   the load's own couple. It presses the back pad and the lips
+    #            into the post, and that normal force is proportional to the
+    #            load — so this term is self-energising, and its MARGIN is
+    #            roughly constant whatever you hang on it.
+    #
+    # The second is the larger of the two and was excluded as "conservative".
+    # It is not conservative to leave out the mechanism doing most of the work;
+    # it just moves the error into the parameter that compensates.
     normal = k * preload
-    friction = 2 * normal * mu
+    f_preload = 2 * normal * mu
+
+    # The load sits mid-cradle on whichever hook is fitted; the deepest one is
+    # the worst case. Read from the size table rather than restated, so a new
+    # row cannot quietly invalidate this.
+    rows = re.findall(r'\["\w+",\s*([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)\]',
+                      open(os.path.join(HERE, "..", "src", "params.scad")).read())
+    load_arm = max((float(r[0]) - p["tip_t"]) / 2 for r in rows)
+    a = post_d / 2 + pad_t + p["back_t"] + load_arm
+    couple = p["couple_frac"] * h
+    f_couple = load * a / couple
+    f_moment = f_couple * (mu + p["mu_petg"])
+
+    friction = f_preload + f_moment
     margin = friction / load
-    print(f"  seated: each arm sprung {preload} mm -> {normal:.0f} N normal; "
-          f"friction at mu {mu} is {friction:.0f} N against a "
-          f"{p['load_kg']} kg ({load:.1f} N) load  = {margin:.1f}x")
+    print(f"  grip: {preload} mm of preload per arm -> {normal:.0f} N normal, "
+          f"{f_preload:.0f} N of friction")
+    print(f"        the load's own moment adds {f_couple:.0f} N at each contact "
+          f"({a:.0f} mm arm over a {couple:.0f} mm couple) -> {f_moment:.0f} N more")
+    print(f"        total {friction:.0f} N against a {p['load_kg']} kg "
+          f"({load:.1f} N) load  = {margin:.1f}x")
     if margin < 2.0:
         fails.append(f"grip margin {margin:.1f}x is under 2x")
+    if f_preload < 0.4 * f_moment:
+        fails.append(f"preload contributes only {f_preload:.0f} N against the "
+                     f"moment's {f_moment:.0f} — too little left if the load comes off")
 
     # ---- 2. what it costs to get it on and off -----------------------------
     lat = k * spread_peak

@@ -6,8 +6,8 @@ it off again.
 
 |  |  |
 |---|---|
-| **Parts** | `clip_s` / `clip_m` / `clip_l` (PETG) + `pad_back` + 2 × `pad_side` (TPU) |
-| **Load** | 1 kg, with a 3.4× margin on the friction that carries it |
+| **Parts** | `clip_s` / `clip_m` / `clip_l` (PETG) + `pad_back` + 2 × `pad_side` (TPU, 1.2 mm) |
+| **Load** | 1 kg, with a 2.8× margin on the friction that carries it |
 | **Fixings** | none. A cable tie is optional and the slots are there for it |
 | **Supports** | none, on any part |
 
@@ -26,13 +26,15 @@ its whole length, so a coupon cannot tell you any of it.
 
 The clip is a C that wraps three faces of the post. The two arms are the spring:
 their inner faces are drawn 2 × 2.5 mm closer together than the post plus its
-pads, so putting it on springs them open and they squeeze back. That squeeze,
-through the TPU pads, is the entire load path — 34 N of friction against a
-9.8 N load. Nothing is clamped and nothing is bolted.
+pads, so putting it on springs them open and they squeeze back. But that squeeze
+is only *half* the load path, and assuming it was all of it is what broke the
+first print — see below. The other half is the load's own moment, which presses
+the back pad and the lips into the post with about 15 N each. Together: 28 N of
+friction against a 9.8 N load. Nothing is clamped and nothing is bolted.
 
 Each arm ends in a lip whose retention face is a **45° cam tangent to the post's
 corner**. Pulling the clip off drives the corner up that cam, and at 45° the
-force ratio is 1:1, so getting it off by straight pull needs the same 45 N it
+force ratio is 1:1, so getting it off by straight pull needs the same 36 N it
 would take to spring the arms apart — while squeezing the thumb tabs releases it
 instantly. The cam also makes the fore-and-aft capture elastic: the arms' inward
 force resolves on a 45° face into a component pushing the post back onto the
@@ -55,27 +57,68 @@ profile and applying a closing; `hook_side_fillet` in plan, a true radius
 tangent to the wall and to the hook's side face, swept up through the hook's own
 profile so it follows the rake instead of standing on the bed.
 
-## Why the pads are three flat slabs
+## What the first print taught
 
-They were one U, printed standing on end because that is how it sits on the
-post. That made it three thin 28 mm-tall walls in TPU on a 41 mm footprint:
-floppy, slow, and prone to shifting. Split into three and laid flat it is three
-low slabs — **15 layers instead of 140**.
+It broke going on, and the measurement that explains it is blunt: with the pads
+fitted the mouth was **35 mm for a 40 mm post**.
 
-Laid flat the *teeth get easier too*, which is the part that looks wrong until
-you work it through. The sawtooth's depth becomes print Z, so above the valley
-only the upper parts of the ramps are present and each one **shrinks** as z
-rises. There is no overhang anywhere. Standing up, the whole part was an
-unsupported shell.
+That number is not the pads. The pad thickness cancels straight out of it:
 
-It costs the studs. A stud has to point either into the bed or out of the pad's
-gripping face, and neither prints — so the pads are a push fit, with glue if
-they will not stay put. That only matters between assembling the clip and
-fitting it: once it is on the post, the post holds them against the PETG.
+```
+hw_in   = post_w/2 + pad_t − preload      (arm's inner face)
+crest   = hw_in − pad_t = post_w/2 − preload
+opening = post_w − 2·preload              ← pad_t is gone
+```
 
-It costs **no collar geometry at all**. `pad_t` is still measured from the arm's
-inner face to the crest exactly as the U's wall was, so `hw_in` is unchanged and
-every spring, cam and catch number is identical either way.
+40 − 2×2.5 = 35. Halving `pad_t` would have changed nothing; the only parameter
+that opens the mouth is `preload`, and it was 4× too big.
+
+**Why it was too big.** It had been sized from a friction budget that
+deliberately left the load's own moment out as "conservative". That is not
+conservative — it is leaving out the mechanism doing most of the work and
+letting the parameter that compensates absorb the error. A load on the hook
+presses the back pad and the lips into the post as a couple, worth ~13 N of
+friction on its own, which is why the clip nearly held a helmet with **no pads
+and no preload at all**. `springcheck.py` now counts both terms, and fails if
+the preload contribution drops too far below the moment's.
+
+| | before | now |
+|---|---|---|
+| opening | 35 mm | **38 mm** |
+| preload per arm | 2.5 mm | 1.0 mm |
+| spread to fit | 4.5 mm | 2.5 mm |
+| peak root stress | 36 MPa (1.38×) | **21 MPa (2.35×)** |
+| push to fit | 5.9 kgf | 3.6 kgf |
+
+A second coupling bit on the way through, worth recording because it was silent:
+the catch is `lip_reach − pad_t`, and `lip_reach` had been left as a literal. So
+thinning the pads from 3.0 to 1.2 deepened the catch from 2.0 to 3.8 mm on its
+own, putting the spread back to 4.8 and the stress to 39 MPa. `lip_reach` is now
+derived from `lip_catch`, so moving the pad moves the lip with it.
+
+## Why the pads are thin, flat slabs
+
+They were a standing U with a sawtooth face. The U printed as three thin 28 mm
+walls in TPU — floppy, slow, prone to shifting — so it became three slabs lying
+flat, **6 layers each**.
+
+`pad_t` is 1.2 because the pad's job is μ, not bulk, and — per the algebra above
+— its thickness never set the fit anyway.
+
+**Flat, not toothed**, for a better reason than "the teeth got too big for a
+1.2 mm pad" (they did). Elastomer friction is not Amontons': it has an adhesive
+component that scales with *real contact area*, so concentrating the same normal
+force onto a few tooth crests trades contact away for pressure. That pays only
+when biting into something rough. Against a smooth painted post, full flat
+contact grips harder.
+
+Flat also kills an assembly trap nothing on the part warned about: a sawtooth is
+directional twice over — which face goes to the post, and which end is up — and
+fitted upside down its steps resist the one direction that does not matter.
+
+What it costs is the teeth's compliance, which used to absorb `post_w` tolerance
+by crushing. That now comes out of the preload margin, which is why `preload` is
+1.0 rather than the 0.5 the grip alone would need.
 
 ## Where the stress goes
 
@@ -151,12 +194,13 @@ the mouth, not on the reach.
 
 ## Fitting it
 
-1. Lay the three pads on the collar's inner faces, teeth inward — the wide one
-   on the back wall, the two long ones on the arms. They are a push fit; a dab
-   of glue if they will not stay put. Once the clip is on the post there is
-   nowhere for them to go, so this only matters until you fit it.
+1. Lay the three pads on the collar's inner faces — the wide one on the back
+   wall, the two long ones on the arms. They are plain flat slabs with no
+   orientation: both faces are the same, so there is no wrong way round. A push
+   fit, with a dab of glue if they will not stay put. Once the clip is on the
+   post there is nowhere for them to go, so this only matters until you fit it.
 2. Offer the clip up to the post and press. The lead-in ramps spread the arms;
-   about 5.9 kgf, two thumbs, and it clicks over the corners.
+   about 3.6 kgf, two thumbs, and it clicks over the corners.
 3. To remove: squeeze the two thumb tabs outward and lift it off.
 
 ### The cable tie (optional)
@@ -242,14 +286,14 @@ test a catch is to move the part until it fouls.
 From `make check`, on the default 40 × 40 post:
 
 ```
-arm spring   3.6 x 36 mm section, 42.2 mm free   ->  11.2 N/mm per arm
-grip         28 N per side, 34 N of friction     ->  3.4x on 1 kg
-fitting      4.5 mm of spread, 30 deg lead-in    ->  5.9 kgf of push
-holding on   2.0 mm of travel over a 45 deg cam  ->  4.6 kgf of straight pull
-strain       1.36% peak while fitting, 0.76% sustained  (PETG yields ~2.5%)
-root stress  fillet r2.5, Kt 1.33            ->  36 MPa peak, 1.38x on yield
-                                                 20 MPa sustained
-catch        0 mm^3 at rest (tangent), 55 mm^3 pulled 1 mm off
+arm spring   3.6 x 36 mm section, 41.1 mm free   ->  12.1 N/mm per arm
+grip         15 N preload + 13 N from the moment ->  2.8x on 1 kg
+fitting      2.5 mm of spread, 30 deg lead-in    ->  3.6 kgf of push
+holding on   1.5 mm of travel over a 45 deg cam  ->  3.7 kgf of straight pull
+strain       0.80% peak while fitting, 0.32% sustained  (PETG yields ~2.5%)
+root stress  fillet r2.5, Kt 1.33            ->  21 MPa peak, 2.35x on yield
+                                                  9 MPa sustained
+catch        0 mm^3 at rest (tangent), 54 mm^3 pulled 1 mm off
 ```
 
 ## Reading the assembly render
