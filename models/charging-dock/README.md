@@ -13,11 +13,22 @@ flat and without supports:
   the recess for the insert, the 6 o'clock cable slots and the locating
   dowel holes. Parted from the base on the inclined plane, with a reveal
   groove running round the body.
-- **top insert** (TPU) — flexible mat that fills the recess, frames each puck
-  with a raised bezel ring and has a cable notch at 6 o'clock.
+- **top insert** (TPU) — flexible mat that fills the recess, with a cable
+  relief at 6 o'clock: a blind pocket in its underside that swallows the
+  cable's boot, so the visible face is unbroken (`mat_cable_pocket`; a through
+  notch is the alternative), and holes that taper towards the face
+  (`mat_puck_lip`) so a lifted phone cannot pull the puck out — a taper rather
+  than a bead, which would peel off its layer.
+  Printed face down so its visible face takes the build
+  sheet's texture, with five studs underneath that press into holes in the
+  recess floor (`mat_dowels`) so it needs no glue. Optional: a grooved CAD
+  texture (`mat_texture`) and a raised bezel ring round each puck
+  (`mat_bezel`, face-up printing only).
 
 Functional core: 6 o'clock rim cable exit, 20 × 20 mm bend envelope in front
 of each puck, shared cable bay with rear slack access, 3 mm push-out holes.
+The pucks sit `phone_width + phone_gap` apart, so two phones fit side by side,
+and the body width follows.
 No underside centre cable path.
 
 ## Source layout
@@ -44,13 +55,19 @@ geometry. `make check` prints the table for the current style; to see it for
 another, `make STYLE=faceted check`, or set `part = "dimensions"` in the
 Customizer and read the console.
 
-Headline values with the defaults: 158 × 110 mm footprint, 18° incline,
-14 mm front / 49.7 mm rear, puck bore 60.5 mm (60 + 2 × 0.25 clearance),
-recess 5 mm deep, TPU insert 4.35 mm thick with 0.55 mm total clearance,
-PETG capture below the TPU 6.15 mm.
+Headline values with the defaults: 165 × 118 mm footprint, pucks 80 mm apart
+(76 mm phones + 4 mm gap), 18° incline, 14 mm front / 52.3 mm rear, puck bore
+60.5 mm (60 + 2 × 0.25 clearance), recess 5 mm deep, TPU insert 4.35 mm thick
+with 0.55 mm total clearance, PETG capture below the TPU 6.15 mm, cable bay
+153 × 20.5 mm (about 108 cm³).
 
-**Measure your pucks.** `puck_nominal_diameter` and `puck_radial_clearance`
-are separate parameters; the advertised 60 mm is probably rounded. Print
+**Measure your phones and pucks.** `phone_width` is the widest phone in its
+case. `puck_nominal_diameter` and `puck_radial_clearance`
+are separate parameters; the advertised 60 mm is probably rounded. Measure
+the cable's rigid boot too (`puck_boot_length`, `puck_boot_width`,
+`puck_boot_top_drop`) and the radius of the U-turn the cable makes after it
+(`cable_bend_radius`): the TPU notch and the pocket in the base are sized from
+them. Print
 `fit_test` first (see PRINTING.md).
 
 ## Styles
@@ -62,7 +79,7 @@ the top of the file (`styles`), so adding a fifth is one line:
 |---|---|---|---|---|
 | `soft_monolith` | r 11 squircle | 1.5 | 0.8 | default |
 | `floating_deck` | r 8 round | 1.0 | 2.0 × 2.0 | deep shadow gap: the plate visibly floats |
-| `faceted` | r 3 round | 3.0 | 0.8 × 1.0 | crisp planes, 75 mm puck spacing |
+| `faceted` | r 3 round | 3.0 | 0.8 × 1.0 | crisp planes |
 | `furniture` | r 14 squircle | 2.0 | 1.0 | broad radii for warm filaments |
 
 | `soft_monolith` | `floating_deck` |
@@ -88,13 +105,16 @@ Customizer.
 | `assembly` | everything in place, with non-printing puck and cable reference solids |
 | `chassis` | base + top plate assembled (preview only) |
 | `base`, `top_plate` | printable PETG parts, print-ready orientation |
-| `top_insert_flat` / `mat` | printable TPU insert, flat |
+| `top_insert_flat` / `mat` | printable TPU insert, flat; face down unless `mat_print_face_down = false` |
 | `top_insert` | TPU insert in place (preview) |
 | `dowel_pins` | two 4 × 10 mm locating pins |
 | `set_petg` | base + top plate + both dowel pins, turned 90° and laid out on one bed |
 | `set_tpu` | the TPU insert, on its own because of the filament change |
 | `showcase` | presentation render: the dock with pucks seated, no clearance envelopes |
-| `fit_test`, `fit_test_mat` | 40 × 40 mm fit coupons (PETG / TPU) |
+| `fit_test`, `fit_test_mat` | 40 × 40 mm fit coupons (rigid / TPU) |
+| `fit_test_dowel`, `fit_test_dowel_mat` | press-fit canary: six hole sizes (vented) against six studs |
+| `fit_test_cable` | cable-path canary: a slice of the base with the U-turn pocket |
+| `fit_test_lip` | puck-lip canary (TPU): a ring of the real mat round one hole |
 | `fit_dummies`, `cable_clearance` | reference solids only |
 | `dimensions` | echoes the dimension table |
 
@@ -114,17 +134,17 @@ every case.
 
 ## Printing
 
-Every part prints flat, top side up, **no supports**, nothing to rotate in the
-slicer. The chassis is parted on the inclined plane carrying the puck floors,
+Every part prints flat, **no supports**, nothing to rotate in the slicer: the
+rigid parts top side up, the TPU mat face down. The chassis is parted on the inclined plane carrying the puck floors,
 so the puck seats are through-bores and the base's sloped face is the puck
 floor. The only downward ceilings are the 6.3 mm magnet pockets and 8.5 mm
 foot pockets — both well inside a normal bridging range, and asserted.
 
 | part | material | footprint | notes |
 |---|---|---|---|
-| `<style>_base` | PETG | 158 × 110 | flat bottom on bed, sloped face up |
-| `<style>_top_plate` | PETG | 158 × 118 | parting face on bed, top face up |
-| `<style>_top_insert` | TPU 95A | 144 × 102 | flat, top up |
+| `<style>_base` | PETG / PLA | 165 × 118 | flat bottom on bed, sloped face up |
+| `<style>_top_plate` | PETG / PLA | 165 × 127 | parting face on bed, top face up |
+| `<style>_top_insert` | TPU 95A | 149 × 109 (furniture) | face down, studs up |
 | `dowel_pins` | PETG | tiny | print two, standing, 100 % infill |
 
 **Print the fit coupons first.** `make fit-test` gives you `fit_test.stl`
@@ -140,10 +160,12 @@ Quick settings:
   on the plate's top surface if you have it; the 7 mm border is the most
   visible surface on the object. Leave elephant-foot compensation at or below
   0.1 mm, or the reveal line shows a step.
-- **TPU** — 95A (softer prints the bezel poorly), 0.2 mm, 15–25 mm/s,
-  retraction off or minimal. For the diamond top pattern set **top solid
-  layers to 0** and infill to 3D honeycomb/cubic at 30–40 % so the infill is
-  exposed — the CAD top is flat precisely so the slicer can make that texture.
+- **TPU** — 95A, 0.2 mm, 15–25 mm/s, retraction off or minimal. The mat
+  prints face down, so a textured or patterned sheet gives the visible face
+  its look with no ironing; the studs underneath then point up. A modelled
+  groove texture is still available (`mat_texture`: `hex`, `tread`, `rugged`)
+  — 0.8 mm grooves cut in, never raised, so the phone still rests on the puck
+  faces and the magnetic grip is unchanged.
 
 Full slicer settings, the complete fit-test procedure and assembly (magnets,
 cable routing, bumpers) are in **[PRINTING.md](PRINTING.md)**.
@@ -170,7 +192,8 @@ Everything runs on the system Python: no venv, no numpy.
 
 `make plates` writes `build/plates/set_petg.3mf`, holding the base, the top
 plate and both dowel pins as three separate objects already arranged on one bed
-(**233 × 166 mm**), and `set_tpu.3mf` with the insert. Slice the PETG file as one
+(**249.5 × 173 mm** — the X is what caps `body_depth` at 118 on the MK4S's
+250 mm), and `set_tpu.3mf` with the insert. Slice the PETG file as one
 job; the TPU insert is separate because of the filament change.
 
 The two PETG parts are laid out side by side, each **turned 90° about Z**.
@@ -186,7 +209,9 @@ into one mesh on export and the pieces would arrive fused.
 ### Verification
 
 `make check` runs the repo's shared checkers against the exported meshes — bed
-fit, watertightness, boolean interference between the two chassis halves, and
+fit, watertightness, boolean interference between mating parts (the chassis
+halves, the mat in its recess, the measured cable path, the mat's studs in
+their holes), and
 **`support.py`**, which confirms nothing prints into thin air. The model's own
 `max_bridge_span` asserts already claimed that in source; this is the first time
 it has been measured on the mesh, and all four styles pass.

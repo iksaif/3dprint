@@ -102,6 +102,19 @@ module join_pockets_plate() {
             }
 }
 
+// Blind holes in the recess floor for the TPU mat's studs. Undersized by
+// mat_dowel_interference so the studs press in. Open upward as printed.
+module mat_dowel_holes() {
+    for (p = mat_dowel_xy)
+        top_frame() {
+            translate([p[0], p[1], -recess_depth - mat_dowel_hole_depth])
+                cylinder(h = mat_dowel_hole_depth + ov, d = mat_dowel_hole_diameter, $fn = 32);
+            // Vent, so the stud is not pressing against trapped air.
+            translate([p[0], p[1], -plate_thickness - ov])
+                cylinder(h = plate_thickness + 2 * ov, d = mat_dowel_vent_diameter, $fn = 24);
+        }
+}
+
 module top_plate() {
     difference() {
         top_plate_blank();
@@ -112,6 +125,7 @@ module top_plate() {
         }
         dowel_hole_plate();
         join_pockets_plate();
+        if (mat_dowels) mat_dowel_holes();
     }
 }
 

@@ -18,7 +18,8 @@ SOURCES := $(wildcard src/*.scad) $(wildcard $(REPO)/lib/scad/*.scad)
 STYLE   ?= soft_monolith
 STYLES   = soft_monolith floating_deck faceted furniture
 
-PARTS   := base top_plate top_insert_flat dowel_pins fit_test fit_test_mat
+PARTS   := base top_plate top_insert_flat dowel_pins fit_test fit_test_mat \
+           fit_test_dowel fit_test_dowel_mat fit_test_cable fit_test_lip
 
 PLATES     := set_petg set_tpu
 PLATE_SCAD := src/main.scad
@@ -28,7 +29,7 @@ PLATE_VAR  := part
 DIMS_PART := dimensions
 
 FIT_SCAD  := tools/fitcheck.scad
-FIT_CASES := chassis:base vs top plate,insert:TPU insert vs its recess
+FIT_CASES := chassis:base vs top plate,insert:TPU insert vs its recess,boot:puck cable boot vs mat and chassis,matdowel:mat studs land in their holes
 
 include $(REPO)/mk/model.mk
 
@@ -37,7 +38,9 @@ include $(REPO)/mk/model.mk
 SCADFLAGS += -D 'style="$(STYLE)"'
 
 .PHONY: fit-test shots all-styles
-fit-test: $(OUT)/fit_test.stl $(OUT)/fit_test_mat.stl
+fit-test: $(OUT)/fit_test.stl $(OUT)/fit_test_mat.stl \
+          $(OUT)/fit_test_dowel.stl $(OUT)/fit_test_dowel_mat.stl $(OUT)/fit_test_cable.stl \
+          $(OUT)/fit_test_lip.stl
 
 SHOT_SIZE   = 1600,1200
 SHOT_CAMERA = 0,52,10,68,0,30,400

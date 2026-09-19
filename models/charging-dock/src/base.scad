@@ -25,9 +25,15 @@ module reveal_cut() {
 }
 
 module cable_bay_cut() {
-    translate([0, (bay_front_y + bay_rear_y) / 2, base_floor])
-        linear_extrude(height = big, convexity = 4)
-            rounded_rect_2d(bay_width, bay_depth, bay_corner_radius);
+    difference() {
+        translate([0, (bay_front_y + bay_rear_y) / 2, base_floor])
+            linear_extrude(height = big, convexity = 4)
+                rounded_rect_2d(bay_width, bay_depth, bay_corner_radius);
+        // Bosses over the rear foot pads, which the widened bay covers.
+        for (x = [-(body_width / 2 - foot_inset), body_width / 2 - foot_inset])
+            translate([x, body_depth - foot_inset, 0])
+                cylinder(h = foot_pad_depth + min_floor, d = foot_boss_diameter, $fn = 48);
+    }
 }
 
 module rear_access_window_cut() {
@@ -68,6 +74,18 @@ module trench_cut(cx) {
         translate([cx, (trench_start_y + trench_end_y) / 2, -plate_thickness - trench_depth])
             linear_extrude(height = trench_depth + ov, convexity = 4)
                 rounded_rect_2d(trench_width, trench_length, channel_radius);
+}
+
+// Pocket for the cable's U-turn, as measured: a horizontal cylinder of the
+// loop's outer radius, centred on the loop, swept back from the boot's end into
+// the trench. The flat bend tray is far too shallow for it. Only its lower half
+// meets the base, and every surface of that faces up, so it prints as is.
+module cable_loop_cut(cx) {
+    top_frame()
+        hull()
+            for (y = [cable_boot_end_y, trench_start_y + rim_cable_overlap_into_puck])
+                translate([cx - trench_width / 2, y, cable_loop_centre_z])
+                    rotate([0, 90, 0]) cylinder(h = trench_width, r = cable_loop_outer);
 }
 
 module eject_hole_cut(cx) {
@@ -112,6 +130,7 @@ module base() {
         for (cx = puck_xs) {
             bend_tray_cut(cx);
             trench_cut(cx);
+            cable_loop_cut(cx);
             eject_hole_cut(cx);
         }
         dowel_hole_base();

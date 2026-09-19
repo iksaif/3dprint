@@ -44,6 +44,11 @@ module dim(name, value) { echo(str("DIM|", name, "|", value)); }
 module echo_dimensions() {
     dim("Style", style);
     dim("Join method", join_method);
+    dim("Phones", str(phone_width, " mm wide + ", phone_gap, " mm gap -> pucks ", puck_spacing, " mm apart"));
+    dim("Mat dowels", mat_dowels ? str(len(mat_dowel_xy), " x d", mat_dowel_diameter, " x ", mat_dowel_length,
+        " mm TPU studs, holes d", mat_dowel_hole_diameter, " x ", mat_dowel_hole_depth,
+        " mm, vented d", mat_dowel_vent_diameter) : "none");
+    dim("Mat print", mat_print_face_down ? "face down" : "face up");
     dim("Footprint (W x D)", str(body_width, " x ", body_depth, " mm"));
     dim("Incline", str(top_angle, " deg"));
     dim("Front height / rear height", str(front_height, " / ", round(back_height * 100) / 100, " mm"));
@@ -55,10 +60,21 @@ module echo_dimensions() {
     dim("Recess", str(round(recess_width * 100) / 100, " x ", round(recess_length * 100) / 100, " x ", recess_depth, " mm, border ", recess_border, " mm, lead-in ", recess_lead_in, " mm"));
     dim("Recess corner radius", str(recess_corner_radius <= 0 ? "sharp" : str(recess_corner_radius, " mm"), " (outer ", footprint_radius, " mm, exponent ", footprint_exponent, ")"));
     dim("TPU insert (W x L x T)", str(round(mat_width * 100) / 100, " x ", round(mat_length * 100) / 100, " x ", mat_thickness, " mm, total clearance ", mat_clearance_total, " mm"));
-    dim("TPU top below border", str(mat_surface_recess, " mm; bezel ", mat_bezel_width, " wide x ", mat_bezel_height, " high"));
-    dim("TPU puck hole", str(puck_hole_diameter, " mm, notch ", mat_cable_notch_width, " x ", mat_cable_notch_length, " mm"));
+    dim("TPU top below border", str(mat_surface_recess, " mm; ",
+        mat_bezel ? str("bezel ", mat_bezel_width, " wide x ", mat_bezel_height, " high") : "no bezel"));
+    dim("TPU texture", mat_texture == "none" ? "none (flat top)"
+        : str(mat_texture, ": grooves ", mat_texture_groove, " wide x ", mat_texture_depth, " deep, pitch ", mat_texture_pitch, " mm, ", mat_thickness - mat_texture_depth, " mm TPU under a groove"));
+    dim("TPU puck hole", str(puck_hole_diameter, " mm",
+        mat_puck_lip ? str(", tapered to ", puck_hole_diameter - 2 * mat_puck_lip_inset,
+                           " mm at the face over ", mat_puck_lip_depth, " mm") : ""));
+    dim("TPU cable relief", str(mat_cable_notch_width, " x ", mat_cable_notch_length, " mm ",
+        mat_cable_relief_depth == 0 ? "not needed: the boot clears the mat"
+        : mat_cable_pocket ? str("blind pocket ", mat_cable_relief_depth, " mm deep, roof ", mat_cable_pocket_roof, " mm")
+        : "through notch"));
     dim("PETG capture below TPU", str(puck_capture_depth, " mm"));
     dim("Cable bend envelope", str(bend_slot_width, " x ", bend_slot_length, " x ", rim_cable_channel_height, " mm, keepout ", front_cable_keepout, " mm"));
+    dim("Cable U-turn", str("boot ", puck_boot_length, " mm, bend radius ", cable_bend_radius,
+        " mm, bottom ", -cable_loop_bottom_z, " mm under the puck face, base floor ", round(cable_loop_floor * 100) / 100, " mm"));
     dim("Plug trench", str(trench_width, " x ", trench_depth, " mm, length ", round(trench_length * 10) / 10, " mm"));
     dim("Cable bay (W x D x floor)", str(bay_width, " x ", round(bay_depth * 100) / 100, " mm, floor at ", base_floor, " mm"));
     dim("Rear access window", str(rear_access_window_width, " x ", rear_access_window_height, " mm"));
@@ -81,7 +97,8 @@ module echo_dimensions() {
 // them front-to-back is the natural reading of the geometry and it needs about
 // 235 mm of Y — fine on the 256 mm square bed this model was first written for,
 // 25 mm too deep for the MK4S's 210 mm. Turned and set beside each other they
-// need ~232 x 158, which fits with room to spare.
+// need 249.5 x 173 at the 165 x 118 body, which is why body_depth stops at 118:
+// X is the axis that runs out.
 //
 // Rotating about Z costs nothing: both parts still print flat on the same face,
 // so the orientation that makes them supportless is untouched.
@@ -125,6 +142,10 @@ else if (part == "top_insert_flat" || part == "mat") top_insert_flat();
 else if (part == "dowel_pins")      dowel_pins();
 else if (part == "fit_test")        fit_test();
 else if (part == "fit_test_mat")    fit_test_mat();
+else if (part == "fit_test_dowel")  fit_test_dowel();
+else if (part == "fit_test_dowel_mat") fit_test_dowel_mat();
+else if (part == "fit_test_cable")  fit_test_cable();
+else if (part == "fit_test_lip")    fit_test_lip();
 else if (part == "fit_dummies")     fit_dummies();
 else if (part == "cable_clearance") for (cx = puck_xs) cable_clearance(cx);
 else if (part == "set_petg") {

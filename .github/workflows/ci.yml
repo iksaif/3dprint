@@ -1,0 +1,49 @@
+# Builds every model and runs the repo's own checks: bed fit, watertightness,
+# boolean interference between mating parts, and support-free printability.
+#
+# OpenSCAD must be a Manifold-capable build. Ubuntu's packaged 2021.01 is not:
+# it does not understand --backend=manifold, which every Makefile here passes.
+# The snap nightly is the least fragile source of a recent build on a runner.
+name: checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  models:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenSCAD (nightly, for the Manifold backend)
+        run: |
+          sudo snap install openscad-nightly
+          /snap/bin/openscad-nightly --version
+
+      - name: Build and check every model
+        run: |
+          set -euo pipefail
+          for model in models/*/; do
+            echo "::group::$model"
+            make -C "$model" OPENSCAD=/snap/bin/openscad-nightly
+            echo "::endgroup::"
+          done
+
+      - name: Upload the exported parts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parts
+          path: |
+            models/*/build/*.stl
+            models/*/build/*.3mf
+            models/*/build/plates/*.3mf
+          if-no-files-found: warn
+          retention-days: 14

@@ -16,7 +16,7 @@
 // Visual style
 style = "soft_monolith"; // [soft_monolith, floating_deck, faceted, furniture]
 // What to render / export
-part = "assembly"; // [assembly, chassis, base, top_plate, top_insert, top_insert_flat, mat, dowel_pins, set_petg, set_tpu, fit_test, fit_test_mat, fit_dummies, cable_clearance, showcase, dimensions]
+part = "assembly"; // [assembly, chassis, base, top_plate, top_insert, top_insert_flat, mat, dowel_pins, set_petg, set_tpu, fit_test, fit_test_mat, fit_test_dowel, fit_test_dowel_mat, fit_test_cable, fit_test_lip, fit_dummies, cable_clearance, showcase, dimensions]
 // Retention of the top plate on the base (two locating dowels are always present)
 join_method = "magnets"; // [magnets, inserts, none]
 // Show non-printing puck/cable reference solids in the assembly view
@@ -42,6 +42,11 @@ bed_y = 210;
 bed_size = min(bed_x, bed_y);
 
 /* [Fit -- measure your parts] */
+// Widest phone that will sit on the dock, including its case. The pucks are
+// spaced so that two of them side by side do not touch.
+phone_width = 76;
+// Gap left between the two phones
+phone_gap = 4;
 // Advertised puck diameter. Measure yours with calipers.
 puck_nominal_diameter = 60;
 // Clearance per side in the PETG bore (0.5 mm total by default)
@@ -52,6 +57,18 @@ puck_height = 10.5;
 mat_clearance_total = 0.55;
 // Hole diameter in the TPU insert (TPU should hug the puck)
 puck_hole_diameter = 60.0;
+// Rigid USB-C strain relief where the cable leaves the puck rim at 6 o'clock:
+// radial length out of the rim, and width
+puck_boot_length = 12;
+puck_boot_width = 5;
+// Puck top face down to the top of the boot. Under recess_depth, the boot
+// reaches up into the TPU mat's thickness and the mat's notch must clear it.
+puck_boot_top_drop = 3;
+// Boot thickness. Only its top matters to the fit: below it is the open bend slot.
+puck_boot_height = 5;
+// Centreline radius of the U-turn the flexible cable makes after the boot, to
+// head back under the puck. Measured by bending the real cable.
+cable_bend_radius = 5;
 // Locating dowel pin diameter (printed pins, part = "dowel_pins")
 dowel_diameter = 4.0;
 // 6 x 2 mm disc magnets by default
@@ -60,6 +77,46 @@ magnet_thickness = 2.0;
 // Hole for an M3 heat-set insert (join_method = "inserts")
 insert_hole_diameter = 4.0;
 insert_hole_depth = 6.0;
+
+/* [TPU mat texture] */
+// Raised TPU ring framing each puck. Off gives a flat top (flat both sides with mat_texture = "none")
+mat_bezel = false;
+// Print the mat face down: its visible face takes the build sheet's texture
+// (no ironing needed) and the studs underneath point up. Needs mat_bezel = false.
+mat_print_face_down = true;
+// The mat's puck holes narrow towards the face, so the phone cannot lift the
+// puck straight out. This is a TAPER, not a bead: a lip standing proud on one
+// layer is loaded in peel by the rising puck and delaminates at its layer bond.
+// Tapered, the load runs into bulk material as hoop tension, and every layer is
+// supported by the one below it (each steps out by inset/depth * layer height).
+// The narrow end sits mat_surface_recess below the puck's face, clear of the phone.
+mat_puck_lip = true;
+mat_puck_lip_inset = 0.3;    // radial pinch at the face, per side
+mat_puck_lip_depth = 1.5;    // axial run of the taper, up to the face
+// How far the taper roots into the mat's body. The wedge and the bore wall
+// share a radius, so without an overlap they meet on coincident faces and the
+// union comes out non-manifold -- which is exactly what mesh.py caught.
+mat_puck_lip_root  = 0.6;
+// TPU studs under the mat that press into blind holes in the recess floor, so
+// the mat stays put without glue. Needs mat_print_face_down.
+mat_dowels = true;
+// Pattern cut into the mat's top face. Only ever cut IN: nothing rises toward
+// the phone, which rests on the puck faces (flush with the PETG border), so the
+// chargers' magnetic grip is exactly what it was with a flat mat.
+// none by default: printed face down, the build sheet gives the texture.
+mat_texture = "none"; // [none, hex, tread, rugged]
+// Groove depth; keep it a whole number of layers
+mat_texture_depth = 0.8;
+// Groove width (TPU closes up anything much under 1 mm)
+mat_texture_groove = 1.6;
+// Centre-to-centre spacing of the grooves (tread rows / hex cells)
+mat_texture_pitch = 9;
+// Chevron arm angle from horizontal (tread only)
+mat_texture_angle = 30;
+// Smooth band kept round the mat edge, each bezel ring and each cable notch
+mat_texture_margin = 3;
+// Layout seed for the rugged stones; change it for a different arrangement
+mat_texture_seed = 7;
 
 /* [Hidden] */
 $fn = 96;
@@ -80,7 +137,6 @@ style_defaults = [
     ["recess_border",      7.0],    // top-face border around the TPU insert
     ["reveal_depth",       0.8],    // shadow gap inset on the base, below the parting line
     ["reveal_height",      0.8],    // shadow gap height along the parting-plane normal
-    ["puck_spacing",        73],    // centre to centre
     ["mat_surface_recess", 0.65],   // TPU top sits this far below the PETG border
     ["mat_bezel_width",    1.8],    // raised TPU ring framing each puck (0 = none)
     ["mat_bezel_height",   0.4],
@@ -97,7 +153,7 @@ styles = [
     ["faceted", [
         ["front_height", 15], ["footprint_radius", 3], ["footprint_exponent", 2],
         ["top_edge_chamfer", 3.0], ["recess_border", 6.0], ["reveal_height", 1.0],
-        ["puck_spacing", 75], ["mat_surface_recess", 0.45],
+        ["mat_surface_recess", 0.45],
         ["channel_radius", 1.8], ["mat_bezel_width", 1.5]]],
     ["furniture", [
         ["footprint_radius", 14], ["top_edge_chamfer", 2.0], ["recess_border", 7.5],
@@ -125,10 +181,17 @@ top_edge_chamfer   = sp("top_edge_chamfer");
 recess_border      = sp("recess_border");
 reveal_depth       = sp("reveal_depth");
 reveal_height      = sp("reveal_height");
-puck_spacing       = sp("puck_spacing");
+// Centre to centre: two phones side by side with phone_gap between them. Was a
+// style key (73, faceted 75), which put two phones against each other.
+puck_spacing       = phone_width + phone_gap;
 mat_surface_recess = sp("mat_surface_recess");
-mat_bezel_width    = sp("mat_bezel_width");
+mat_bezel_width    = mat_bezel ? sp("mat_bezel_width") : 0;
 mat_bezel_height   = sp("mat_bezel_height");
+// Smooth band kept round each puck hole on a textured top: where the ring sits
+// when there is one, and the same width without it. Narrowing it when the ring
+// is off pulls the texture onto the neck between the pucks and leaves groove
+// stubs too small to print.
+mat_texture_hole_band = sp("mat_bezel_width") + mat_texture_margin;
 channel_radius     = sp("channel_radius");
 rear_mark          = sp("rear_mark");
 
@@ -136,8 +199,12 @@ rear_mark          = sp("rear_mark");
 // Overall body
 // ---------------------------------------------------------------------------
 
-body_width = 158;
-body_depth = 110;          // horizontal footprint, front to rear
+// Border from each puck bore out to the body's side, as on the original 158 mm body
+puck_side_margin = 12.25;
+body_width = puck_spacing + puck_nominal_diameter + 2 * puck_radial_clearance + 2 * puck_side_margin;
+// Horizontal footprint, front to rear. Was 110; 118 grows the cable bay and is
+// the most the MK4S bed takes for the rigid set (asserted in main.scad).
+body_depth = 118;
 top_angle  = 18;           // degrees
 top_length = body_depth / cos(top_angle);
 back_height = front_height + body_depth * tan(top_angle);
@@ -216,7 +283,7 @@ base_rear_height  = parting_z(body_depth);
 // Cable bay (base, open-topped, roofed by the flat underside of the top plate)
 // ---------------------------------------------------------------------------
 
-bay_side_wall  = 13;
+bay_side_wall  = 6;            // was 13; thinned for cable storage
 bay_rear_wall  = 4;
 bay_front_wall = 2.5;          // between the puck floor's rear edge and the bay
 base_floor     = 2.0;
@@ -267,19 +334,75 @@ screw_head_depth         = 2.5;
 foot_pad_diameter = 8.5;
 foot_pad_depth    = 0.8;
 foot_inset        = 14;
+// The rear pads sit under the cable bay. A boss inside the bay over each keeps
+// min_floor above the pad's ceiling instead of base_floor - foot_pad_depth.
+foot_boss_diameter = foot_pad_diameter + 2 * min_wall;
 
 // Maintenance
 eject_hole_diameter = 3;
 eject_hole_offset_x = trench_width / 2 + 4;   // beside the trench, still under the puck
 
-// TPU cable relief at 6 o'clock
-mat_cable_notch_width   = 8.0;
-mat_cable_notch_length  = 10.0;
+// The cable's path out of the puck, as measured: the rigid boot leaves the rim
+// at 6 o'clock, then the flexible cable makes a U-turn of centreline radius
+// cable_bend_radius starting at the boot's end, and runs back under the puck.
+cable_dummy_diameter = 4.2;
+cable_boot_z        = -puck_boot_top_drop - puck_boot_height / 2;   // boot centreline, local z
+cable_boot_end_y    = puck_y - puck_nominal_diameter / 2 - puck_boot_length;
+cable_loop_outer    = cable_bend_radius + cable_dummy_diameter / 2;
+cable_loop_centre_z = cable_boot_z - cable_bend_radius;
+cable_loop_bottom_z = cable_loop_centre_z - cable_loop_outer;
+// Run past the boot before the top of the bending cable is below the mat's underside
+cable_dive_cos = (-recess_depth - cable_loop_centre_z) / cable_loop_outer;
+cable_dive_run = cable_dive_cos >= 1 ? 0
+               : cable_dive_cos <= 0 ? cable_loop_outer
+               : cable_loop_outer * sqrt(1 - cable_dive_cos * cable_dive_cos);
+
+// TPU cable relief at 6 o'clock. The boot's top sits above the mat's underside,
+// so the notch has to clear the whole boot and the cable's dive after it, not
+// just the cable. It was a fixed 10 mm (8.5 past the hole) against an 11 mm
+// boot, and the first test fit showed the boot riding up on the notch end.
+mat_cable_notch_clearance = 1.0;
+mat_cable_notch_width   = max(8.0, puck_boot_width + 2 * mat_cable_notch_clearance);
 mat_cable_notch_overlap = 1.5;
+// Reach past the edge of the puck hole
+mat_cable_notch_reach   = (puck_nominal_diameter - puck_hole_diameter) / 2
+                          + puck_boot_length + cable_dive_run + mat_cable_notch_clearance;
+mat_cable_notch_length  = mat_cable_notch_reach + mat_cable_notch_overlap;
 mat_cable_notch_radius  = 2.2;
 
-// Non-printing reference solids
-cable_dummy_diameter = 4.2;
+// The boot's top sits puck_boot_top_drop below the puck's face and the mat's
+// underside sits recess_depth below it, so the boot only reaches into the lower
+// part of the mat. A blind pocket in the underside clears it and leaves the
+// visible face unbroken; the cable never shows. The through notch is the
+// alternative, and the two differ in assembly: the boot drops through a notch
+// (pucks last), while a pocket comes down over the boot (pucks first).
+mat_cable_pocket = true;
+mat_cable_pocket_clearance = 0.5;
+mat_cable_relief_depth = max(0, recess_depth - puck_boot_top_drop + mat_cable_pocket_clearance);
+mat_cable_pocket_roof  = mat_thickness - mat_cable_relief_depth;
+
+// TPU locating studs under the mat (mat_dowels), pressed into blind holes in
+// the recess floor: one on the rib between the pucks, one near each corner.
+mat_dowel_diameter      = 4.0;
+mat_dowel_length        = 2.5;
+mat_dowel_tip_chamfer   = 0.5;
+// Diametral. lib/scad/print.scad suggests 0.4 for TPU into a rigid hole, which
+// no stud would enter once the printed parts' own bias was added: the first
+// ladder (0.3 to 0.5) was solid at every step. Vented holes and a ladder that
+// reached clearance showed every step entering, so this takes the tightest.
+mat_dowel_interference  = 0.2;
+mat_dowel_hole_diameter = mat_dowel_diameter - mat_dowel_interference;
+// A blind hole with a soft plug in it is a piston: the trapped air fights the
+// stud on the way in and pushes it back out. Every hole is vented through the
+// plate, into the gap over the base, which costs nothing and prints as a
+// plain small through-hole.
+mat_dowel_vent_diameter = 1.2;
+mat_dowel_hole_depth    = mat_dowel_length + 0.5;
+mat_dowel_inset         = 10;    // corner studs, from the recess walls
+mat_dowel_xy = concat([[0, puck_y]],
+    [for (sx = [-1, 1], y = [recess_border + mat_dowel_inset, top_length - recess_border - mat_dowel_inset])
+        [sx * (recess_width / 2 - mat_dowel_inset), y]]);
+
 
 // Fit-test coupon.
 // Must not equal puck_hole_diameter / 2: at exactly the bore radius the
@@ -288,6 +411,20 @@ cable_dummy_diameter = 4.2;
 // Keep it just inside so the box cuts the bore as a secant.
 fit_quadrant = puck_hole_diameter / 2 - 0.5;
 fit_corner   = 9;
+
+// Canary coupons for the two fits that exist only in the model: the mat's
+// studs pressed into the plate, and the cable's U-turn pocket in the base.
+// The stud tile carries one hole per step, marked with that many dots. The
+// steps are measured from the STUD's diameter, so 0 is nominally zero
+// interference and positive is clearance: the first ladder (0.3 to 0.5 mm of
+// interference) was too tight to assemble at every step, which is what a
+// printed TPU peg in a printed rigid hole does.
+fit_dowel_hole_steps = [-0.2, 0, 0.2, 0.4, 0.6, 0.8];   // added to mat_dowel_diameter
+fit_dowel_pitch      = 12;
+fit_dowel_tile       = [76, 20];
+// Ring canary for the puck lip: a band of the real mat round one whole hole,
+// so the puck can actually be pressed in and the grip felt.
+fit_lip_band         = 6;
 
 // ---------------------------------------------------------------------------
 // Design rules (asserts)
@@ -337,8 +474,73 @@ assert(puck_rib >= 8, str("Rib between the puck bores is only ", puck_rib, " mm"
 assert(puck_side_floor >= 3, str("Recess floor beside a puck bore is only ", puck_side_floor, " mm"));
 assert(mat_ligament >= 4, str("TPU insert too thin beside a puck: ", mat_ligament, " mm"));
 assert(mat_bezel_width <= mat_ligament - 1, "TPU bezel ring runs into the insert edge");
+mat_front_ligament = (puck_y - puck_hole_diameter / 2 - mat_cable_notch_reach)
+                     - (recess_border + mat_clearance_total / 2);
+assert(mat_front_ligament >= 2.5,
+       str("TPU in front of the cable notch is only ", mat_front_ligament, " mm; the boot or cable_bend_radius is too long"));
+
+// Cable U-turn. Its lower-front quarter is the deepest cut in front of the
+// puck, where the wedge is thinnest, so the floor is taken round that arc.
+cable_loop_floor = min([for (a = [0 : 2 : 90])
+    floor_under_local(cable_boot_end_y - cable_loop_outer * sin(a),
+                      cable_loop_centre_z - cable_loop_outer * cos(a))]);
+assert(cable_loop_floor >= min_floor,
+       str("Base floor under the cable U-turn is only ", cable_loop_floor, " mm; raise front_height or tighten cable_bend_radius"));
+assert(puck_boot_length + cable_loop_outer - puck_radial_clearance <= cable_bend_square,
+       "Cable U-turn runs out past the bend envelope in front of the puck");
+
+// Mat puck lip
+assert(!mat_puck_lip || mat_puck_lip_inset > 0, "mat_puck_lip_inset must be positive");
+assert(!mat_puck_lip || mat_puck_lip_inset < 1.0,
+       "Pinching the puck by more than 1 mm a side will not let it seat");
+assert(!mat_puck_lip || mat_puck_lip_depth <= mat_thickness / 2,
+       "The puck lip taper is over half the mat's thickness");
+// The ramp must be shallow enough that the rising puck loads bulk material
+// rather than peeling the layers at the face apart.
+assert(!mat_puck_lip || mat_puck_lip_depth >= 4 * mat_puck_lip_inset,
+       str("Puck lip ramp too steep: ", mat_puck_lip_depth, " mm over ", mat_puck_lip_inset,
+           " mm pinch is nearly a flange, which peels off its layer"));
+assert(!mat_puck_lip || mat_puck_lip_depth >= 4 * print_layer_height,
+       "Puck lip taper is under four layers");
+
+// Mat cable relief
+assert(!mat_cable_pocket || mat_cable_relief_depth == 0 || mat_cable_pocket_roof >= 1.2,
+       str("TPU over the cable pocket is only ", mat_cable_pocket_roof,
+           " mm; the boot reaches too near the puck's face for a pocket, set mat_cable_pocket = false"));
+assert(!mat_cable_pocket || mat_print_face_down || mat_cable_notch_width <= max_bridge_span,
+       "Face up, the cable pocket's roof bridges more than max_bridge_span");
+
+// Mat print orientation and dowels
+assert(!(mat_print_face_down && mat_bezel),
+       "A face-down mat cannot carry the raised bezel ring: it would stand on the ring alone");
+assert(!mat_dowels || mat_print_face_down,
+       "Mat dowels only print with the mat face down (face up they hang below the bed)");
+assert(plate_floor - mat_dowel_hole_depth >= min_floor, "Plate floor too thin under the mat dowel holes");
+// Clearance from a stud hole to the nearest bore, bend slot, locating dowel hole
+// or join pocket. The slot distance is Chebyshev, which never overstates it.
+function mat_dowel_clear(p) = min(concat(
+    [for (cx = puck_xs) norm(p - [cx, puck_y]) - puck_bore_diameter / 2],
+    [for (y = dowel_ys) norm(p - [0, y]) - (dowel_diameter + dowel_plate_clearance) / 2],
+    [for (x = join_xs, y = join_ys) norm(p - [x, y]) - max(magnet_pocket_diameter, screw_head_diameter) / 2],
+    [for (cx = puck_xs) max(abs(p[0] - cx) - bend_slot_width / 2, abs(p[1] - bend_slot_center_y) - bend_slot_length / 2)]
+)) - mat_dowel_hole_diameter / 2;
+if (mat_dowels)
+    for (p = mat_dowel_xy)
+        assert(mat_dowel_clear(p) >= 2,
+               str("Mat dowel at ", p, " is only ", mat_dowel_clear(p), " mm from a bore, slot, dowel or join pocket"));
 assert(mat_bezel_height < mat_surface_recess, "TPU bezel would stand above the PETG border");
 assert(plate_thickness == puck_height, "Through-bore design requires plate_thickness == puck_height");
+
+// Mat texture
+assert(mat_texture == "none" || mat_texture == "tread" || mat_texture == "hex" || mat_texture == "rugged",
+       str("Unknown mat_texture '", mat_texture, "'"));
+assert(abs(mat_texture_depth / print_layer_height - round(mat_texture_depth / print_layer_height)) < 1e-6,
+       "mat_texture_depth is not a whole number of layers");
+assert(mat_thickness - mat_texture_depth >= min_floor,
+       str("TPU under a texture groove is only ", mat_thickness - mat_texture_depth, " mm"));
+assert(mat_texture_groove >= 1.0, "TPU texture grooves under 1 mm close up when printed");
+assert(mat_texture_pitch - mat_texture_groove >= 2 * mat_texture_groove,
+       "TPU texture lands narrower than twice the groove");
 
 // Join
 assert(dowel_hole_to_bore >= 3, str("Dowel hole too close to a puck bore: ", dowel_hole_to_bore));

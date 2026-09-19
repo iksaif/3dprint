@@ -1,5 +1,7 @@
 # 3dprint
 
+[![checks](https://github.com/iksaif/3dprint/actions/workflows/ci.yml/badge.svg)](https://github.com/iksaif/3dprint/actions/workflows/ci.yml)
+
 Parametric OpenSCAD models for FDM printing, plus the shared tooling that checks
 them. Everything here targets a **Prusa MK4S** (250 × 210 × 220), prints in PETG
 with TPU where flex is needed, and prints **without supports** — enforced by
@@ -12,7 +14,7 @@ shape the 45° limit will not give; exactly one part in this repo does.
 | | Model | What it is | Materials | Status |
 |---|---|---|---|---|
 | <img src="models/helmet-holder/build/renders/asm_iso.png" width="150"> | **[helmet-holder](models/helmet-holder/)** | Clamp for a 40 × 40 mm square post with a swappable extension dock — helmet cradle (two widths), strap hook, lock hook, shelf | PETG + TPU pads | Coupon printing |
-| <img src="models/charging-dock/docs/soft_monolith.png" width="150"> | **[charging-dock](models/charging-dock/)** | Inclined desk dock for two Anker Zolo A25M2 magnetic pucks, in four visual styles | PETG + TPU insert | Unprinted |
+| <img src="models/charging-dock/docs/soft_monolith.png" width="150"> | **[charging-dock](models/charging-dock/)** | Inclined desk dock for two Anker Zolo A25M2 magnetic pucks, in four visual styles | PETG or PLA + TPU insert | Canaries printed, fits being tuned |
 | <img src="models/post-hook/docs/asm_side.png" width="150"> | **[post-hook](models/post-hook/)** | Snap-on hook for a 40 × 40 mm post — no screws, three hook sizes, optional cable tie | PETG + TPU liner | Unprinted |
 
 ## Layout
@@ -23,6 +25,7 @@ tools/           shared checkers, all pure Python (no venv, no numpy)
 mk/model.mk      the shared build rules every model includes
 models/<name>/   one model each: src/, tools/, Makefile, README
 .claude/skills/  the openscad skill — the render-and-look loop, FDM numbers
+.github/         CI: builds every model and runs every check on each push
 attic/           superseded files kept for reference; not built, not shipped
 ```
 
@@ -76,3 +79,34 @@ Details in [CLAUDE.md](CLAUDE.md). The short version:
   unprintable.
 - **Derive, don't restate.** Screw lengths, counterbore depths and clearances are
   computed from the geometry and echoed, so the BOM cannot drift.
+
+## Getting printable files
+
+STLs and 3MFs are **not** in git — they are build outputs, and a repo that
+carries both drifts. Two ways to get them:
+
+- **Build them**: `cd models/<name> && make`. Everything lands in `build/`,
+  including ready-to-slice plates in `build/plates/`.
+- **Download them**: CI attaches every model's exported parts to its run, and
+  tagged releases carry the same files.
+
+Each model's README lists what to print and in which order; the charging dock
+also has [PRINTING.md](models/charging-dock/PRINTING.md) for slicer settings,
+fit coupons and assembly.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — what to install, how to run the
+checks, and the five rules a change has to keep. CI runs the same `make` you
+do, so green locally means green there.
+
+## Licence
+
+Two licences, split by what the files are:
+
+- **Tooling** — `lib/`, `tools/`, `mk/`, and the repo's own scripts: **MIT**
+  ([LICENSE](LICENSE)). Take the checkers and use them anywhere.
+- **Models** — everything under `models/`, sources and renders and anything
+  exported from them: **CC BY-SA 4.0** ([models/LICENSE.md](models/LICENSE.md)).
+  Print them, sell the prints, remix them; credit the source and keep the
+  same licence on your changes.

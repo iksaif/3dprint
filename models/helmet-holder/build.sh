@@ -4,7 +4,8 @@
 # that are about proportion rather than about numbers.
 set -euo pipefail
 cd "$(dirname "$0")"
-OS=/opt/homebrew/bin/openscad
+# Same default as mk/model.mk, overridable the same way: OPENSCAD=... ./build.sh
+OS=${OPENSCAD:-/opt/homebrew/bin/openscad}
 R=build/renders
 mkdir -p "$R"
 
