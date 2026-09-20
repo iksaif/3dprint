@@ -53,13 +53,26 @@ module top_plate_blank() {
 module recess_cut() {
     h = chamfer_rise(recess_lead_in);
     top_frame() {
-        translate([0, 0, -recess_depth])
-            linear_extrude(height = recess_depth + ov, convexity = 6)
-                top_outline_2d(0, recess_border);
-        hull() {
-            slice_at(-h) top_outline_2d(0, recess_border);
-            slice_at(0)  top_outline_2d(0, recess_border - recess_lead_in);
-            slice_at(ov) top_outline_2d(0, recess_border - recess_lead_in);
+        if (split_islands) {
+            for (cx = puck_xs) {
+                translate([cx, puck_y, -recess_depth])
+                    linear_extrude(height = recess_depth + ov, convexity = 6)
+                        island_2d(0);
+                hull() {
+                    slice_at(-h) translate([cx, puck_y]) island_2d(0);
+                    slice_at(0)  translate([cx, puck_y]) island_2d(recess_lead_in);
+                    slice_at(ov) translate([cx, puck_y]) island_2d(recess_lead_in);
+                }
+            }
+        } else {
+            translate([0, 0, -recess_depth])
+                linear_extrude(height = recess_depth + ov, convexity = 6)
+                    top_outline_2d(0, recess_border);
+            hull() {
+                slice_at(-h) top_outline_2d(0, recess_border);
+                slice_at(0)  top_outline_2d(0, recess_border - recess_lead_in);
+                slice_at(ov) top_outline_2d(0, recess_border - recess_lead_in);
+            }
         }
     }
 }
@@ -78,11 +91,13 @@ module bend_slot_cut(cx) {
                 rounded_rect_2d(bend_slot_width, bend_slot_length, channel_radius);
 }
 
+dowel_plate_depth = split_islands ? dowel_base_depth + 1.5 : plate_thickness + 2 * ov;
+
 module dowel_hole_plate() {
     for (y = dowel_ys)
         top_frame()
             translate([0, y, -plate_thickness - ov])
-                cylinder(h = plate_thickness + 2 * ov, d = dowel_diameter + dowel_plate_clearance, $fn = 48);
+                cylinder(h = dowel_plate_depth + ov, d = dowel_diameter + dowel_plate_clearance, $fn = 48);
 }
 
 module join_pockets_plate() {

@@ -13,7 +13,13 @@ module mat_cable_notch_2d() {
 }
 
 module mat_outline_2d() {
-    top_outline_2d(0, recess_border + mat_clearance_total / 2);
+    if (split_islands) {
+        for (cx = puck_xs)
+            translate([cx, puck_y])
+                island_2d(-mat_clearance_total / 2);
+    } else {
+        top_outline_2d(0, recess_border + mat_clearance_total / 2);
+    }
 }
 
 module mat_2d() {
@@ -55,7 +61,13 @@ module mat_texture_field_2d() {
     r = mat_texture_pitch / 2;
     offset(r = r) offset(r = -r)
         difference() {
-            top_outline_2d(0, recess_border + mat_clearance_total / 2 + mat_texture_margin);
+            if (split_islands) {
+                for (cx = puck_xs)
+                    translate([cx, puck_y])
+                        island_2d(-mat_clearance_total / 2 - mat_texture_margin);
+            } else {
+                top_outline_2d(0, recess_border + mat_clearance_total / 2 + mat_texture_margin);
+            }
             for (cx = puck_xs)
                 translate([cx, puck_y]) {
                     circle(d = puck_hole_diameter + 2 * mat_texture_hole_band);

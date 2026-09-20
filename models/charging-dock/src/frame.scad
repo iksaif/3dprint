@@ -13,6 +13,11 @@ module rounded_rect_2d(width, depth, radius) {
     offset(r = r) offset(delta = -r) square([width, depth], center = true);
 }
 
+// 2D outline for a single pad island, centered at origin
+module island_2d(extra = 0) {
+    rounded_rect_2d(island_width + 2 * extra, island_length + 2 * extra, island_radius + extra);
+}
+
 // Rectangle with superellipse corners (n = 2 circular, n = 4 squircle), CCW.
 function superrect_points(w, d, r, n, steps = 24) =
     let(hw = w / 2 - r, hd = d / 2 - r)

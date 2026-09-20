@@ -72,8 +72,8 @@ them. Print
 
 ## Styles
 
-Four styles share the functional core and differ only in a lookup table at
-the top of the file (`styles`), so adding a fifth is one line:
+Five styles share the functional core and differ only in a lookup table at
+the top of the file (`styles`), so adding a sixth is one line:
 
 | style | footprint | top chamfer | reveal | notes |
 |---|---|---|---|---|
@@ -81,12 +81,15 @@ the top of the file (`styles`), so adding a fifth is one line:
 | `floating_deck` | r 8 round | 1.0 | 2.0 × 2.0 | deep shadow gap: the plate visibly floats |
 | `faceted` | r 3 round | 3.0 | 0.8 × 1.0 | crisp planes |
 | `furniture` | r 14 squircle | 2.0 | 1.0 | broad radii for warm filaments |
+| `atelier` | r 14 squircle | 1.8 | 1.5 × 1.2 | split dual island inlays, solid center bridge, floating base lift |
 
 | `soft_monolith` | `floating_deck` |
 |---|---|
 | ![soft_monolith](docs/soft_monolith.png) | ![floating_deck](docs/floating_deck.png) |
 | **`faceted`** | **`furniture`** |
 | ![faceted](docs/faceted.png) | ![furniture](docs/furniture.png) |
+| **`atelier`** | |
+| ![atelier](docs/atelier.png) | |
 
 Renders show the dock with the pucks seated; regenerate them with
 `make shots` (the `showcase` part). The pucks are reference solids and are

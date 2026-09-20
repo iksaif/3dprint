@@ -31,10 +31,19 @@ jobs:
         # OPENSCAD goes in the environment, not just on the make command line:
         # the Python checkers read it from there, and a make variable does not
         # reach them. Passed both ways so the Makefiles see it too.
+        #
+        # TMPDIR moves the checkers' scratch exports into the workspace. The
+        # snap is strictly confined and has a PRIVATE /tmp, so anything it
+        # writes to the system temp dir is invisible to the Python that asked
+        # for it -- which reads as "every case failed" or, worse, "every hook
+        # is free". fitcheck.py no longer uses the temp dir at all; the
+        # model-specific checkers still do.
         env:
           OPENSCAD: /snap/bin/openscad-nightly
+          TMPDIR: ${{ github.workspace }}/.citmp
         run: |
           set -euo pipefail
+          mkdir -p "$TMPDIR"
           for model in models/*/; do
             echo "::group::$model"
             make -C "$model" OPENSCAD="$OPENSCAD"

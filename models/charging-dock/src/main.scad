@@ -17,8 +17,10 @@ module chassis() {
 module assembly() {
     chassis_colour = style == "furniture" ? [0.63, 0.45, 0.31]
                    : style == "faceted"   ? [0.15, 0.17, 0.18]
+                   : style == "atelier"   ? [0.45, 0.30, 0.19]
                    :                        [0.25, 0.27, 0.26];
-    insert_colour = [0.025, 0.03, 0.03];
+    insert_colour  = style == "atelier"   ? [0.60, 0.36, 0.19]
+                   :                        [0.025, 0.03, 0.03];
     color(chassis_colour) base();
     color(chassis_colour * 1.15) top_plate();
     color(insert_colour) top_insert();
@@ -31,10 +33,13 @@ module assembly() {
 module showcase() {
     chassis_colour = style == "furniture" ? [0.63, 0.45, 0.31]
                    : style == "faceted"   ? [0.15, 0.17, 0.18]
+                   : style == "atelier"   ? [0.45, 0.30, 0.19]
                    :                        [0.25, 0.27, 0.26];
+    insert_colour  = style == "atelier"   ? [0.60, 0.36, 0.19]
+                   :                        [0.025, 0.03, 0.03];
     color(chassis_colour) base();
     color(chassis_colour * 1.15) top_plate();
-    color([0.025, 0.03, 0.03]) top_insert();
+    color(insert_colour) top_insert();
     for (cx = puck_xs)
         color([0.93, 0.94, 0.92]) puck_fit_dummy(cx);
 }
@@ -57,9 +62,15 @@ module echo_dimensions() {
     dim("Top plate size flat (X x Y)", str(body_width, " x ", round(top_length * 100) / 100, " mm"));
     dim("Puck bore", str(puck_bore_diameter, " mm (", puck_nominal_diameter, " + 2 x ", puck_radial_clearance, ")"));
     dim("Puck spacing", str(puck_spacing, " mm, rib ", puck_rib, " mm"));
-    dim("Recess", str(round(recess_width * 100) / 100, " x ", round(recess_length * 100) / 100, " x ", recess_depth, " mm, border ", recess_border, " mm, lead-in ", recess_lead_in, " mm"));
-    dim("Recess corner radius", str(recess_corner_radius <= 0 ? "sharp" : str(recess_corner_radius, " mm"), " (outer ", footprint_radius, " mm, exponent ", footprint_exponent, ")"));
-    dim("TPU insert (W x L x T)", str(round(mat_width * 100) / 100, " x ", round(mat_length * 100) / 100, " x ", mat_thickness, " mm, total clearance ", mat_clearance_total, " mm"));
+    dim("Recess", split_islands
+        ? str("2 x ", island_width, " x ", island_length, " x ", recess_depth, " mm islands, border ", recess_border, " mm, lead-in ", recess_lead_in, " mm")
+        : str(round(recess_width * 100) / 100, " x ", round(recess_length * 100) / 100, " x ", recess_depth, " mm, border ", recess_border, " mm, lead-in ", recess_lead_in, " mm"));
+    dim("Recess corner radius", split_islands
+        ? str(island_radius, " mm (island)")
+        : (recess_corner_radius <= 0 ? "sharp" : str(recess_corner_radius, " mm (outer ", footprint_radius, " mm, exponent ", footprint_exponent, ")")));
+    dim("TPU insert (W x L x T)", split_islands
+        ? str("2 x ", island_width - mat_clearance_total, " x ", island_length - mat_clearance_total, " x ", mat_thickness, " mm islands, clearance ", mat_clearance_total, " mm")
+        : str(round(mat_width * 100) / 100, " x ", round(mat_length * 100) / 100, " x ", mat_thickness, " mm, total clearance ", mat_clearance_total, " mm"));
     dim("TPU top below border", str(mat_surface_recess, " mm; ",
         mat_bezel ? str("bezel ", mat_bezel_width, " wide x ", mat_bezel_height, " high") : "no bezel"));
     dim("TPU texture", mat_texture == "none" ? "none (flat top)"

@@ -14,7 +14,7 @@
 
 /* [Selection] */
 // Visual style
-style = "soft_monolith"; // [soft_monolith, floating_deck, faceted, furniture]
+style = "soft_monolith"; // [soft_monolith, floating_deck, faceted, furniture, atelier]
 // What to render / export
 part = "assembly"; // [assembly, chassis, base, top_plate, top_insert, top_insert_flat, mat, dowel_pins, set_petg, set_tpu, fit_test, fit_test_mat, fit_test_dowel, fit_test_dowel_mat, fit_test_cable, fit_test_lip, fit_dummies, cable_clearance, showcase, dimensions]
 // Retention of the top plate on the base (two locating dowels are always present)
@@ -141,7 +141,12 @@ style_defaults = [
     ["mat_bezel_width",    1.8],    // raised TPU ring framing each puck (0 = none)
     ["mat_bezel_height",   0.4],
     ["channel_radius",     3.0],    // corner radius of cable channels / bay
-    ["rear_mark",         true]     // debossed mark on the rear face
+    ["rear_mark",         true],    // debossed mark on the rear face
+    ["split_islands",    false],    // split TPU insert into two separate island pads
+    ["island_width",      69.0],    // width of each island pad (plan view)
+    ["island_length",    110.0],    // length of each island pad
+    ["island_radius",      9.0],    // corner radius of each island pad
+    ["base_bottom_chamfer", 0.5]    // bottom chamfer on the base (elephant foot & shadow lift)
 ];
 
 styles = [
@@ -157,7 +162,15 @@ styles = [
         ["channel_radius", 1.8], ["mat_bezel_width", 1.5]]],
     ["furniture", [
         ["footprint_radius", 14], ["top_edge_chamfer", 2.0], ["recess_border", 7.5],
-        ["reveal_depth", 1.0], ["reveal_height", 1.0], ["mat_bezel_width", 2.0]]]
+        ["reveal_depth", 1.0], ["reveal_height", 1.0], ["mat_bezel_width", 2.0]]],
+    ["atelier", [
+        ["front_height", 15], ["footprint_radius", 14], ["footprint_exponent", 4],
+        ["top_edge_chamfer", 1.8], ["recess_border", 7.0],
+        ["reveal_depth", 1.5], ["reveal_height", 1.2],
+        ["mat_surface_recess", 0.65],
+        ["base_bottom_chamfer", 1.0],
+        ["split_islands", true],
+        ["island_width", 69.0], ["island_length", 110.0], ["island_radius", 9.0]]]
 ];
 
 function kv(list, key) =
@@ -194,6 +207,11 @@ mat_bezel_height   = sp("mat_bezel_height");
 mat_texture_hole_band = sp("mat_bezel_width") + mat_texture_margin;
 channel_radius     = sp("channel_radius");
 rear_mark          = sp("rear_mark");
+split_islands      = sp("split_islands");
+island_width       = sp("island_width");
+island_length      = sp("island_length");
+island_radius      = sp("island_radius");
+base_bottom_chamfer = sp("base_bottom_chamfer");
 
 // ---------------------------------------------------------------------------
 // Overall body
@@ -212,7 +230,6 @@ back_height = front_height + body_depth * tan(top_angle);
 // Every chamfer is (run, rise) derived from the overhang limit.
 function chamfer_rise(run) = run / tan(max_overhang_angle);
 
-base_bottom_chamfer  = 0.5;   // hides elephant foot on the base
 plate_bottom_chamfer = 0.4;   // hides elephant foot on the top plate, sharpens the reveal
 
 // ---------------------------------------------------------------------------
@@ -399,7 +416,12 @@ mat_dowel_hole_diameter = mat_dowel_diameter - mat_dowel_interference;
 mat_dowel_vent_diameter = 1.2;
 mat_dowel_hole_depth    = mat_dowel_length + 0.5;
 mat_dowel_inset         = 10;    // corner studs, from the recess walls
-mat_dowel_xy = concat([[0, puck_y]],
+mat_dowel_xy = split_islands ? [
+    for (cx = puck_xs,
+         dx = [-(island_width / 2 - mat_dowel_inset), island_width / 2 - mat_dowel_inset],
+         dy = [-(island_length / 2 - mat_dowel_inset), island_length / 2 - mat_dowel_inset])
+        [cx + dx, puck_y + dy]
+] : concat([[0, puck_y]],
     [for (sx = [-1, 1], y = [recess_border + mat_dowel_inset, top_length - recess_border - mat_dowel_inset])
         [sx * (recess_width / 2 - mat_dowel_inset), y]]);
 
@@ -435,8 +457,10 @@ function floor_under_local(yl, zl) = top_to_world([0, yl, zl])[2];   // world Z 
 tray_floor   = floor_under_local(bend_slot_front_y, -plate_thickness - bend_tray_depth);
 trench_floor = floor_under_local(trench_start_y, -plate_thickness - trench_depth);
 puck_rib     = puck_spacing - puck_bore_diameter;
-mat_ligament = (mat_width - puck_spacing - puck_hole_diameter) / 2;
-puck_side_floor = recess_width / 2 - (puck_spacing / 2 + puck_bore_diameter / 2);
+mat_ligament = split_islands ? (island_width - mat_clearance_total - puck_hole_diameter) / 2
+                             : (mat_width - puck_spacing - puck_hole_diameter) / 2;
+puck_side_floor = split_islands ? (island_width - puck_bore_diameter) / 2
+                               : recess_width / 2 - (puck_spacing / 2 + puck_bore_diameter / 2);
 dowel_hole_to_bore = (puck_spacing / 2 - sqrt(pow(puck_bore_diameter / 2, 2) - pow(dowel_y_offset, 2)))
                      - (dowel_diameter + dowel_plate_clearance) / 2;
 join_to_bore = (join_xs[1] - magnet_pocket_diameter / 2)
@@ -474,8 +498,11 @@ assert(puck_rib >= 8, str("Rib between the puck bores is only ", puck_rib, " mm"
 assert(puck_side_floor >= 3, str("Recess floor beside a puck bore is only ", puck_side_floor, " mm"));
 assert(mat_ligament >= 4, str("TPU insert too thin beside a puck: ", mat_ligament, " mm"));
 assert(mat_bezel_width <= mat_ligament - 1, "TPU bezel ring runs into the insert edge");
-mat_front_ligament = (puck_y - puck_hole_diameter / 2 - mat_cable_notch_reach)
-                     - (recess_border + mat_clearance_total / 2);
+mat_front_ligament = split_islands
+                     ? (puck_y - puck_hole_diameter / 2 - mat_cable_notch_reach)
+                       - (puck_y - island_length / 2 + mat_clearance_total / 2)
+                     : (puck_y - puck_hole_diameter / 2 - mat_cable_notch_reach)
+                       - (recess_border + mat_clearance_total / 2);
 assert(mat_front_ligament >= 2.5,
        str("TPU in front of the cable notch is only ", mat_front_ligament, " mm; the boot or cable_bend_radius is too long"));
 

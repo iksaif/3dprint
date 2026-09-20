@@ -16,7 +16,7 @@ SCAD    := src/main.scad
 SOURCES := $(wildcard src/*.scad) $(wildcard $(REPO)/lib/scad/*.scad)
 
 STYLE   ?= soft_monolith
-STYLES   = soft_monolith floating_deck faceted furniture
+STYLES   = soft_monolith floating_deck faceted furniture atelier
 
 PARTS   := base top_plate top_insert_flat dowel_pins fit_test fit_test_mat \
            fit_test_dowel fit_test_dowel_mat fit_test_cable fit_test_lip
