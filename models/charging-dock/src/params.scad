@@ -455,7 +455,7 @@ fit_lip_band         = 6;
 function floor_under_local(yl, zl) = top_to_world([0, yl, zl])[2];   // world Z = floor thickness above bed
 
 tray_floor   = floor_under_local(bend_slot_front_y, -plate_thickness - bend_tray_depth);
-trench_floor = floor_under_local(trench_start_y, -plate_thickness - trench_depth);
+trench_floor = base_floor;
 puck_rib     = puck_spacing - puck_bore_diameter;
 mat_ligament = split_islands ? (island_width - mat_clearance_total - puck_hole_diameter) / 2
                              : (mat_width - puck_spacing - puck_hole_diameter) / 2;

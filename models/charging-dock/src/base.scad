@@ -68,12 +68,32 @@ module bend_tray_cut(cx) {
                 rounded_rect_2d(bend_slot_width, bend_slot_length, channel_radius);
 }
 
-// Open plug trench in the puck floor: bend tray -> under the puck -> bay.
+module trench_profile_xz(z_bot, z_top) {
+    hw = trench_width / 2 - channel_radius;
+    hull() {
+        for (sx = [-hw, hw]) {
+            translate([sx, z_bot + channel_radius]) circle(r = channel_radius, $fn = 32);
+            translate([sx, z_top]) square([2 * channel_radius, eps], center = true);
+        }
+    }
+}
+
+// Open plug trench in the puck floor: slopes down from the cable loop to the bay floor.
 module trench_cut(cx) {
-    top_frame()
-        translate([cx, (trench_start_y + trench_end_y) / 2, -plate_thickness - trench_depth])
-            linear_extrude(height = trench_depth + ov, convexity = 4)
-                rounded_rect_2d(trench_width, trench_length, channel_radius);
+    y0 = top_to_world([0, trench_start_y, -plate_thickness])[1];
+    y1 = bay_front_y + ov;
+    z0 = cable_loop_floor;
+    z1 = base_floor;
+    top_z0 = parting_z(y0) + ov;
+    top_z1 = parting_z(y1) + ov;
+
+    translate([cx, 0, 0])
+        hull() {
+            translate([0, y0, 0]) rotate([90, 0, 0]) linear_extrude(eps)
+                trench_profile_xz(z0, top_z0);
+            translate([0, y1, 0]) rotate([90, 0, 0]) linear_extrude(eps)
+                trench_profile_xz(z1, top_z1);
+        }
 }
 
 // Pocket for the cable's U-turn, as measured: a horizontal cylinder of the
