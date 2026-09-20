@@ -141,6 +141,14 @@ module mat_rugged_grooves_2d() {
     }
 }
 
+// Fluted: vertical parallel grooves running down the incline.
+module mat_fluted_grooves_2d() {
+    p = mat_texture_pitch / 2;
+    for (i = [-ceil(body_width / 2 / p) : ceil(body_width / 2 / p)])
+        translate([i * p, puck_y])
+            square([mat_texture_groove, 2 * top_length], center = true);
+}
+
 // The opening drops groove fragments too small to print where the pattern is
 // clipped by the field edge.
 module mat_texture_2d() {
@@ -151,6 +159,7 @@ module mat_texture_2d() {
             if (mat_texture == "tread") mat_tread_grooves_2d();
             else if (mat_texture == "hex") mat_hex_grooves_2d();
             else if (mat_texture == "rugged") mat_rugged_grooves_2d();
+            else if (mat_texture == "fluted") mat_fluted_grooves_2d();
         }
 }
 

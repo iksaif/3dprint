@@ -104,7 +104,7 @@ mat_dowels = true;
 // the phone, which rests on the puck faces (flush with the PETG border), so the
 // chargers' magnetic grip is exactly what it was with a flat mat.
 // none by default: printed face down, the build sheet gives the texture.
-mat_texture = "none"; // [none, hex, tread, rugged]
+mat_texture = "none"; // [none, hex, tread, rugged, fluted]
 // Groove depth; keep it a whole number of layers
 mat_texture_depth = 0.8;
 // Groove width (TPU closes up anything much under 1 mm)
@@ -559,7 +559,7 @@ assert(mat_bezel_height < mat_surface_recess, "TPU bezel would stand above the P
 assert(plate_thickness == puck_height, "Through-bore design requires plate_thickness == puck_height");
 
 // Mat texture
-assert(mat_texture == "none" || mat_texture == "tread" || mat_texture == "hex" || mat_texture == "rugged",
+assert(mat_texture == "none" || mat_texture == "tread" || mat_texture == "hex" || mat_texture == "rugged" || mat_texture == "fluted",
        str("Unknown mat_texture '", mat_texture, "'"));
 assert(abs(mat_texture_depth / print_layer_height - round(mat_texture_depth / print_layer_height)) < 1e-6,
        "mat_texture_depth is not a whole number of layers");
