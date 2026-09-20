@@ -21,12 +21,25 @@ case shows more than --tolerance mm^3 of overlap.
 """
 import argparse
 import os
+import shutil
 import struct
 import subprocess
 import sys
 import tempfile
 
 OPENSCAD = os.environ.get("OPENSCAD", "/opt/homebrew/bin/openscad")
+
+
+def openscad_binary():
+    """The binary to run, or a clear error. A missing one used to surface as
+    every case 'failing' with OpenSCAD's own chatter as the explanation."""
+    if os.path.isfile(OPENSCAD) and os.access(OPENSCAD, os.X_OK):
+        return OPENSCAD
+    found = shutil.which(os.path.basename(OPENSCAD)) or shutil.which("openscad")
+    if found:
+        return found
+    sys.exit(f"fitcheck: no OpenSCAD at {OPENSCAD} and none on PATH. "
+             f"Set OPENSCAD=/path/to/openscad.")
 
 
 def volume(path):
@@ -59,29 +72,39 @@ def main():
         cases.append((name.strip(), (label or name).strip()))
 
     width = max(len(label) for _, label in cases) + 2
+    openscad = openscad_binary()
+    # Beside the .scad rather than in /tmp. A sandboxed OpenSCAD — the snap
+    # build CI installs — gets a PRIVATE /tmp, so its export lands where this
+    # process cannot see it and every case reads as a failure.
+    workdir = tempfile.mkdtemp(prefix=".fitcheck-",
+                               dir=os.path.dirname(os.path.abspath(args.scad)))
     fail = False
-    for which, label in cases:
-        out = os.path.join(tempfile.gettempdir(), f"fit_{which}.stl")
-        if os.path.exists(out):
-            os.remove(out)
-        r = subprocess.run(
-            [OPENSCAD, "--backend=manifold", "--export-format", "binstl",
-             "-o", out, "-D", f'which="{which}"', args.scad],
-            capture_output=True)
-        if b"top level object is empty" in r.stderr:
-            # nothing at all in common - the cleanest possible pass
-            n, v = 0, 0.0
-        elif r.returncode != 0 or not os.path.exists(out):
-            print(f"{label:{width}s} openscad failed: "
-                  f"{r.stderr.decode(errors='replace').strip()[:120]}")
-            fail = True
-            continue
-        else:
-            n, v = volume(out)
-        ok = v < args.tolerance
-        fail |= not ok
-        print(f"{label:{width}s} {n:6d} tris  {v:9.4f} mm^3  "
-              f"{'OK (contact only)' if ok else 'INTERFERENCE'}")
+    try:
+        for which, label in cases:
+            out = os.path.join(workdir, f"fit_{which}.stl")
+            r = subprocess.run(
+                [openscad, "--backend=manifold", "--export-format", "binstl",
+                 "-o", out, "-D", f'which="{which}"', args.scad],
+                capture_output=True)
+            # An empty intersection is the cleanest possible pass, and has to
+            # be tested BEFORE the return code: OpenSCAD exits non-zero when
+            # asked to export nothing, so gating this on a zero exit turns
+            # every perfect fit into a failure.
+            if b"top level object is empty" in r.stderr:
+                n, v = 0, 0.0
+            elif r.returncode != 0 or not os.path.exists(out):
+                print(f"{label:{width}s} openscad failed: "
+                      f"{r.stderr.decode(errors='replace').strip()[:120]}")
+                fail = True
+                continue
+            else:
+                n, v = volume(out)
+            ok = v < args.tolerance
+            fail |= not ok
+            print(f"{label:{width}s} {n:6d} tris  {v:9.4f} mm^3  "
+                  f"{'OK (contact only)' if ok else 'INTERFERENCE'}")
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
     return 1 if fail else 0
 
 

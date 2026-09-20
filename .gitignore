@@ -11,6 +11,10 @@ DIMENSIONS.md
 # Superseded files, kept locally for reference only
 attic/
 
+# fitcheck's scratch dir, beside the .scad it is checking. Removed on exit;
+# this catches the ones a Ctrl-C leaves behind.
+.fitcheck-*/
+
 # Python
 __pycache__/
 *.pyc

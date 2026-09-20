@@ -28,11 +28,16 @@ jobs:
           /snap/bin/openscad-nightly --version
 
       - name: Build and check every model
+        # OPENSCAD goes in the environment, not just on the make command line:
+        # the Python checkers read it from there, and a make variable does not
+        # reach them. Passed both ways so the Makefiles see it too.
+        env:
+          OPENSCAD: /snap/bin/openscad-nightly
         run: |
           set -euo pipefail
           for model in models/*/; do
             echo "::group::$model"
-            make -C "$model" OPENSCAD=/snap/bin/openscad-nightly
+            make -C "$model" OPENSCAD="$OPENSCAD"
             echo "::endgroup::"
           done
 
