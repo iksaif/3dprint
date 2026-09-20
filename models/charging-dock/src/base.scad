@@ -78,11 +78,12 @@ module trench_profile_xz(z_bot, z_top) {
     }
 }
 
-// Open plug trench in the puck floor: slopes down from the cable loop to the bay floor.
+// Open plug trench: slopes continuously from the cable U-turn down to the bay floor.
 module trench_cut(cx) {
-    y0 = top_to_world([0, trench_start_y, -plate_thickness])[1];
+    p_loop = top_to_world([0, cable_boot_end_y, cable_loop_centre_z]);
+    y0 = p_loop[1];
+    z0 = p_loop[2] - cable_loop_outer;
     y1 = bay_front_y + ov;
-    z0 = cable_loop_floor;
     z1 = base_floor;
     top_z0 = parting_z(y0) + ov;
     top_z1 = parting_z(y1) + ov;
@@ -96,16 +97,12 @@ module trench_cut(cx) {
         }
 }
 
-// Pocket for the cable's U-turn, as measured: a horizontal cylinder of the
-// loop's outer radius, centred on the loop, swept back from the boot's end into
-// the trench. The flat bend tray is far too shallow for it. Only its lower half
-// meets the base, and every surface of that faces up, so it prints as is.
+// Pocket for the cable's U-turn: a horizontal cylinder of the loop's outer radius
+// at the boot's end, transitioning directly into the sloped trench.
 module cable_loop_cut(cx) {
     top_frame()
-        hull()
-            for (y = [cable_boot_end_y, trench_start_y + rim_cable_overlap_into_puck])
-                translate([cx - trench_width / 2, y, cable_loop_centre_z])
-                    rotate([0, 90, 0]) cylinder(h = trench_width, r = cable_loop_outer);
+        translate([cx - trench_width / 2, cable_boot_end_y, cable_loop_centre_z])
+            rotate([0, 90, 0]) cylinder(h = trench_width, r = cable_loop_outer);
 }
 
 module eject_hole_cut(cx) {
