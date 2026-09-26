@@ -20,14 +20,15 @@ gap   = 6;
 // Drop a part so its own minimum corner lands at `pos`.
 module at(pos, mn) { translate([pos[0] - mn[0], pos[1] - mn[1], -mn[2]]) children(); }
 
-// Measured minimum corners as exported. `make check` prints these (tools/bbox.py);
-// if a part changes size, re-read them from there rather than guessing.
-MIN_S     = [-27.3, -40.4, 0.0];   //  54.6 x 72.7
-MIN_M     = [-27.3, -46.8, 0.0];   //  54.6 x 79.2
-MIN_L     = [-27.3, -50.8, 0.0];   //  54.6 x 83.2
-MIN_PAD   = [  0.0,   0.0, 0.0];   //  pads are modelled from the origin, flat
+// Minimum corners come from the geometry (clip_min in params.scad), not from
+// numbers copied out of bbox.py — those went stale the first time the lip
+// changed. They are outer bounds, so parts can only end up further apart.
+MIN_S     = clip_min(size_idx("s"));
+MIN_M     = clip_min(size_idx("m"));
+MIN_L     = clip_min(size_idx("l"));
+MIN_PAD   = [0, 0, 0];             // pads are modelled from the origin, flat
 
-W = 54.6;   // every clip is the same width — the collar does not change
+W = 2 * clip_x_half;   // every clip is the same width — the collar does not change
 
 if (plate == "petg") {              // all three hooks, one bed
     at([            0, 0], MIN_S) clip("s");

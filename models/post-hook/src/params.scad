@@ -616,6 +616,19 @@ function mouth(s) =
 // needs no strength check of its own.
 function load_arm(s) = cradle_len(s) / 2;
 
+// ---- Bounding corners, for the plates ---------------------------------------
+// OUTER bounds, from the geometry, rather than numbers copied out of bbox.py.
+// The copied ones went 1.8 mm stale the first time the lip changed. These are
+// meant to be no smaller than the real part, so a plate laid out on them can
+// leave a little extra gap but never overlap two parts. The hook's fillet
+// offsets overshoot the stroke's own circles by a few hundredths, which is why
+// there is a 0.5 mm margin rather than none — checked against bbox.py.
+clip_x_half    = x_out + tab_out;
+function clip_min(s) =
+    [-clip_x_half,
+     min(y_back_out, min([for (st = hk_stations(s)) st[0] - st[2]])) - 0.5,
+     0];
+
 // ---- Load case -------------------------------------------------------------
 // 1 kg is the brief. Everything is reported against it directly and the margins
 // are stated rather than baked in, because the margin on the FRICTION is the

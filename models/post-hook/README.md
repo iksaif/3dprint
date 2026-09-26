@@ -7,7 +7,7 @@ it off again.
 |  |  |
 |---|---|
 | **Parts** | `clip_s` / `clip_m` / `clip_l` (PETG) + `pad_back` + 2 × `pad_side` (TPU, 1.2 mm) |
-| **Load** | 1 kg, with a 3.0× margin on the friction that carries it |
+| **Load** | 1 kg, with a 2.5× margin on the friction that carries it |
 | **Fixings** | none. A cable tie is optional and the slots are there for it |
 | **Supports** | none, on any part |
 
@@ -22,24 +22,40 @@ from a first print — how hard it is to press on, whether the lips release when
 you want them to, whether it holds a kilo — is a property of the arm spring over
 its whole length, so a coupon cannot tell you any of it.
 
+**Slicer settings and the measurements to take are in [PRINTING.md](PRINTING.md)**
+— in particular *Perimeters = 4*, and three caliper readings, because the model
+assumes perfect dimensions and the first real print said it isn't getting them.
+
 ## How it works
 
 The clip is a C that wraps three faces of the post. The two arms are the spring:
-their inner faces are drawn 2 × 2.5 mm closer together than the post plus its
+their inner faces are drawn 2 × 0.5 mm closer together than the post plus its
 pads, so putting it on springs them open and they squeeze back. But that squeeze
 is only *half* the load path, and assuming it was all of it is what broke the
 first print — see below. The other half is the load's own moment, which presses
-the back pad and the lips into the post with about 15 N each. Together: 30 N of
+the back pad and the lips into the post with about 15 N each. Together: 25 N of
 friction against a 9.8 N load. Nothing is clamped and nothing is bolted.
 
-Each arm ends in a lip whose retention face is a **45° cam tangent to the post's
-corner**. Pulling the clip off drives the corner up that cam, and at 45° the
-force ratio is 1:1, so getting it off by straight pull needs the same 36 N it
-would take to spring the arms apart — while squeezing the thumb tabs releases it
-instantly. The cam also makes the fore-and-aft capture elastic: the arms' inward
-force resolves on a 45° face into a component pushing the post back onto the
-back pad, so the clip clamps itself in both axes and a post 0.5 mm over nominal
-just springs the arms 0.5 mm further instead of jamming.
+Each arm ends in a lip whose retention face is a **cam tangent to the post's
+corner**, its normal 25° off the insertion axis. Squeezing the thumb tabs is how
+it comes off; a straight pull takes ~12 kgf, deliberately. The cam also makes
+the fore-and-aft capture elastic: the arms' inward force resolves on the
+inclined face into a component pushing the post back onto the back pad, so the
+clip clamps itself in both axes.
+
+### Why 25° and not 45°
+
+It was 45°, chosen so that a straight pull would release it. That left one load
+case untested: **the load's own moment**. It presses the tops of the lips into
+the post's front corners, and a 45° face turned ~60% of that push into outward
+force on the arms — 0.85 mm of a 1.26 mm catch at 1 kg static, which hanging a
+helmet on would roughly have doubled. At 25° only 19% comes back, and the lips
+open 0.57 mm of 1.27 even allowing 2× for the load being hung on rather than
+set down. `springcheck.py` checks this now.
+
+The catch itself is 1.27 mm rather than the nominal 1.5, because the side pads
+press ~0.76 of the way along the arm, and the tip — where the lip is — moves
+further than the pad does. That is in the check too.
 
 The hook's profile is a **stroke** — a chain of hulled circles whose radius is
 the local half-thickness — swept from a thick root, up a stem raked at 50°,
@@ -115,8 +131,14 @@ the preload contribution drops too far below the moment's.
 |---|---|---|
 | preload per arm | 2.5 mm | 0.5 mm |
 | spread to fit | 4.5 mm | 2.0 mm |
-| peak root stress | 36 MPa (1.38×) | **17 MPa (2.93×)** |
-| push to fit | 5.9 kgf | 2.9 kgf |
+| peak root stress | 36 MPa (1.38×) | **12 MPa (4.0×)** |
+| push to fit | 5.9 kgf | 2.0 kgf |
+
+The "before" column is from the old spring model, which treated the back wall as
+rigid; the back wall is actually ~24% of the compliance, so by today's model the
+print that broke was nearer 27 MPa. That makes the break slightly *less* a matter
+of bulk stress than the table suggests — which fits: what actually stopped it
+was the jam below, not the arm reaching its yield.
 
 A second coupling bit on the way through, worth recording because it was silent:
 the catch is `lip_reach − pad_t`, and `lip_reach` had been left as a literal. So
@@ -230,8 +252,9 @@ the mouth, not on the reach.
    fit, with a dab of glue if they will not stay put. Once the clip is on the
    post there is nowhere for them to go, so this only matters until you fit it.
 2. Offer the clip up to the post and press. The lead-in ramps spread the arms;
-   about 2.9 kgf, two thumbs, and it clicks over the corners.
-3. To remove: squeeze the two thumb tabs outward and lift it off.
+   about 2 kgf, two thumbs, and it clicks over the corners.
+3. To remove: squeeze the two thumb tabs outward and lift it off. Pulling it
+   straight off takes ~12 kgf — deliberately, so that a load can't do it.
 
 ### The cable tie (optional)
 
@@ -280,11 +303,17 @@ was right.
 ## Verification
 
 `make check` runs the shared checks plus `tools/springcheck.py`, which asks the
-two questions nothing else can:
+three questions nothing else can:
 
-- **Does it grip?** The arm spring as a cantilever — stiffness, preload force,
-  friction against the load, insertion and pull-off forces, and the peak and
-  sustained strain. All from `params.scad`, so the numbers cannot go stale.
+- **Does it grip?** The arm spring as a cantilever whose root rotates with the
+  back wall — stiffness, preload force where the pads actually bear, friction
+  from both the preload and the load's own moment, insertion force, and the
+  peak and sustained root stress. All from `params.scad`, so the numbers cannot
+  go stale.
+- **Does the load open the lips?** The moment presses the lip tops into the
+  post's corners, and the cam face turns part of that into outward push on the
+  arms. Checked against the catch that is actually left, with a 2× factor for
+  the load being hung on rather than set down.
 - **Does the lip actually catch?** Rendered, not computed, and as a *pair*: the
   lips are placed where they sit once the arms are sprung, then pulled 1 mm off
   the post and intersected with it.
@@ -316,15 +345,20 @@ test a catch is to move the part until it fouls.
 From `make check`, on the default 40 × 40 post:
 
 ```
-arm spring   3.6 x 36 mm section, 41.1 mm free   ->  12.1 N/mm at the TIP
-pads bear    0.61-0.91 along the arm             ->  27.7 N/mm where it counts
-grip         17 N preload + 13 N from the moment ->  3.0x on 1 kg
-fitting      2.0 mm of spread, 30 deg lead-in    ->  2.9 kgf of push
-holding on   1.5 mm of travel over a 45 deg cam  ->  3.7 kgf of straight pull
-strain       0.64% peak while fitting, 0.16% sustained  (PETG yields ~2.5%)
-root stress  fillet r2.5, Kt 1.33            ->  17 MPa peak, 2.93x on yield
-                                                  7 MPa sustained
-catch        0 mm^3 at rest (tangent), 54 mm^3 pulled 1 mm off
+arm spring   3.6 x 36 mm, 41.8 mm free, back wall -> 8.7 N/mm at the TIP
+                                                     (wall is 24% of it)
+pads bear    0.60-0.89 along the arm             ->  19.3 N/mm where it counts
+catch        pads spread the tip 0.73 mm         ->  1.27 mm left, not 1.5
+grip         12 N preload + 13 N from the moment ->  2.5x on 1 kg
+fitting      2.0 mm of spread, 30 deg lead-in    ->  2.0 kgf of push
+lips         25 deg face, load hung on           ->  open 0.57 of 1.27 mm (2.2x)
+removal      tabs 2.2 kgf; straight pull         ->  11.6 kgf
+strain       0.47% peak while fitting, 0.19% sustained  (PETG yields ~2.5%)
+root stress  fillet r2.5, Kt 1.33            ->  12 MPa peak, 4.0x on yield
+                                                  5 MPa sustained
+catch test   0 mm^3 at rest (tangent), 73 mm^3 pulled 1 mm off
+
+All of it assumes the part prints to size. See PRINTING.md.
 ```
 
 ## Reading the assembly render
