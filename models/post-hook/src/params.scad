@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
 // post-hook — every dimension, in mm.
 //
-// A single-piece PETG clip that presses onto a 40 x 40 post from one face, with
-// three flat TPU pads that do the gripping. One hook, ~1 kg, no screws.
+// A single-piece PETG clip that presses onto a 40 x 40 post from one face,
+// gripping on two moulded lands and the load's own moment, with an optional
+// cable tie. One hook, ~1 kg, no screws, one part.
 //
 // DATUM: the POST's centreline. x and y are measured from the post's axis, so
 // x = +/- post_w/2 and y = +/- post_d/2 are its four faces. z = 0 is the bed.
@@ -28,10 +29,9 @@ include <../../../lib/scad/print.scad>
 
 // ---- The post ---------------------------------------------------------------
 // post_w is the axis the ARMS grip (they flex in x, so tolerance here is
-// absorbed by the spring and costs nothing but a little preload).
-// post_d is the axis the LIPS capture, and that one is rigid — the lip face and
-// the back pad are two hard surfaces a fixed distance apart. So post_d is the
-// measurement to get right, and post_d_min/max are what the teeth must absorb.
+// absorbed by the spring: it moves the grip lands' squeeze up or down).
+// post_d is the axis the LIPS capture between the cams and the back wall; the
+// cams make it elastic, and post_d_min/max are what they must absorb.
 post_w         = 40;
 post_d         = 40;
 post_d_min     = 39.5;
@@ -47,7 +47,7 @@ post_d_max     = 40.5;
 // reduces to 0.586 * r_actual >= 0.586 * r_design. So:
 //
 //   post rounder than designed  ->  a little slack, which the arms simply close
-//                                   up and the pads' crests absorb
+//                                   up
 //   post SQUARER than designed  ->  the cam drives into the corner and the clip
 //                                   will not seat without permanently spreading
 //                                   the arms
@@ -57,7 +57,9 @@ post_d_max     = 40.5;
 // never a guess on the high side. It was 3 — a plausible figure for rolled
 // steel tube — against posts that are actually all but square, which would have
 // jammed both lips by 0.8 mm.
-post_corner_r  = 0.5;   // measured: these posts are near enough square
+// 0: the posts are square to the eye and to the touch, and the rule above says
+// design for the sharpest they might be. A rounder post only buys slack.
+post_corner_r  = 0;
 
 // ---- Print compensation --------------------------------------------------------
 // How much bigger, PER SIDE, to draw everything the post sits in. The model
@@ -74,63 +76,68 @@ post_corner_r  = 0.5;   // measured: these posts are near enough square
 // millimetre is invisible to the stiffness.
 //
 // Found by printing the calibration ladder (`make calib`, see PRINTING.md), not
-// guessed. 0 until then.
-fit_adjust     = 0;
+// guessed. 0.2, from slice 0 measured with calipers at mid-height:
+//
+//   inside width between the arms   41.0 mm  against 41.4 drawn  -> 0.20 a side
+//   mouth between the lip crests    35.5 mm  against 36.0 drawn  -> 0.25 a side
+//   arm thickness                    3.5 mm  against 3.6 drawn
+//
+// The arm printing THIN at the same time as the cavity printing small says this
+// is an overall undersize, not over-extrusion closing the gap — so growing the
+// cavity is the right correction rather than thinning the walls. Post measured
+// 40.0 x 40.0.
+fit_adjust     = 0.2;
 pw             = post_w + 2 * fit_adjust;   // the post the geometry is drawn around
 pd             = post_d + 2 * fit_adjust;
 
-// ---- TPU pads ----------------------------------------------------------------
-// Three FLAT slabs — one for the back wall, two for the arms — printed lying
-// down. Thin, and with no teeth.
+// ---- No pads: bare PETG, a proper fit, and the tie --------------------------
+// There used to be TPU here — a standing U liner, then three flat pads — to
+// supply grip through an interference fit. Both are gone, and the part is one
+// print in one material.
 //
-// It was a standing U with a sawtooth face, and the first physical test killed
-// both halves of that.
+// The first physical tests are what settled it. A pad-less clip held its own
+// weight and nearly held the helmet on the load's own moment alone; a clip WITH
+// pads had nowhere to put them once the print came out 0.2 mm a side small; and
+// every interference the pads brought had to be supplied by an arm that cannot
+// deflect near its root, which is what jammed and snapped the first print.
 //
-// THICKNESS. pad_t is 1.2, down from 3.0, because it does not need to be thick:
-// its job is mu, not bulk. The thing that has to be thin was never the pad
-// anyway — see preload, where the real error was.
+// So the arms now CLEAR the post along their whole length, by arm_clear, and
+// never squeeze it. Grip comes from two places:
 //
-// FLAT, not toothed. At 1.2 mm the old 0.8 mm teeth would be two thirds of the
-// part, leaving a 0.4 mm base: not a pad with teeth, a row of triangles joined
-// by a film. But the better reason is grip. Elastomer friction is not
-// Amontons' — it has an adhesive component that scales with REAL CONTACT AREA,
-// so concentrating the same normal force into a few tooth crests trades contact
-// away for pressure. That trade only pays when you need to bite into something
-// rough; against a smooth painted post, full flat contact grips harder.
+//   the load's own moment — the load presses the back wall and the lips into
+//     the post as a couple, which is self-energising: more load, more grip.
+//   the cable tie, cinched through the lip slots — which pulls the arm TIPS in
+//     onto the post, the one place the arms are free to move, and is now the
+//     clamp rather than an optional extra.
 //
-// Flat also kills an assembly trap that nothing on the part warned about: a
-// sawtooth is directional twice over — which face goes to the post, and which
-// end is up — and fitted upside down its steps resist the one direction that
-// does not matter.
+// Neither needs interference anywhere near the root, which is the point.
 //
-// What it costs is the teeth's compliance, which used to absorb post_w
-// tolerance by crushing. That now comes out of the preload margin instead,
-// which is why preload is 1.0 rather than the 0.6 the grip alone would need.
-pad_t          = 1.2;   // 6 layers. 0.8 works too if you want less still.
-pad_margin     = 3;     // pads shorter than the collar, top and bottom
-// Side pads stop this far short of the post's front face. Not cosmetic: they
-// have to end BEHIND where the lip's cam face leaves the arm (y_cam_start), or
-// pad and lip occupy the same millimetre and the fit check lights up.
-pad_front      = 4;
-// How long the SIDE pads are, and the reason they are short and forward rather
-// than running the length of the arm.
+// arm_clear and back_clear are the fit, and they are what the calibration
+// ladder is for: what gets printed is the drawn geometry minus fit_adjust, so
+// these are the clearances the PART should have, not the ones a slicer sees.
+arm_clear      = 0.1;   // per side, between each arm and the post's flat
+back_clear     = 0.1;   // between the back wall and the post's back face
+
+// ---- Grip lands: a little squeeze, only where the arm can give it -------------
+// Some squeeze is worth keeping: it is what holds the clip in place before the
+// tie is on, and it was noticeably useful in hand. The rule it has to obey is
+// the one the first print broke: a cantilever has no deflection at its root, so
+// interference is only possible toward the tip.
 //
-// A cantilever's deflection at its root is zero. The deflection available at a
-// distance u along it is cant_shape(u/L) of the tip's, and that falls away
-// fast: at a tenth of the way along it is under 2%. The side pads used to start
-// 3 mm from the root, where supplying 1 mm of interference would have needed
-// over 100 mm of tip deflection. The post was not being gripped back there — it
-// was jamming on something that could not open, whatever the arm's stress said.
-//
-// So the interference lives only where there is compliance to supply it. Behind
-// the pads the arm's own inner face clears the post by pad_t - preload and
-// touches nothing.
-pad_side_len   = 12;
-pad_clear      = 0.5;   // off the collar's inner corner fillets
-pad_corner_r   = 2;     // plan rounding, so they are pleasant to handle
+// So each arm carries a short raised land on its inner face — the old TPU side
+// pads, now moulded into the PETG — standing grip proud of the post, over
+// grip_len, ending grip_front short of the post's front face, with a grip_lead
+// ramp at each end so the post rides on rather than catching an edge. Everywhere
+// else the arm clears the post by arm_clear. The land is part of the collar's
+// outline, so it is a prism along print Z and costs nothing to print — and the
+// calibration slices carry it, so the ladder tests the squeeze directly.
+grip           = 0.4;   // interference per side at the lands, as printed
+grip_len       = 12;
+grip_front     = 4;
+grip_lead      = 3;
 
 // ---- The collar ---------------------------------------------------------------
-// collar_h is the arms' second moment (I scales with it, so preload force does
+// collar_h is the arms' second moment (I scales with it, so grip force does
 // too) and the couple arm that reacts the hook's moment. It is not set by the
 // post: 36 is where the arms are stiff enough and the part still reads as a
 // clip rather than a block.
@@ -145,54 +152,62 @@ arm_t          = 3.6;   // THE SPRING. 8 perimeters at 0.45. See springcheck.py:
 // convex rounding of r takes r off each of its ends — at 2.5 the crest the
 // post actually bears on stops existing.
 corner_r       = 1.5;
-// 2.5, not 1.0, and this is the one rounding in the model that is structural
-// rather than cosmetic. The arms are pushed OUTWARD by the post, so at the root
-// the tension face is the one opposite the load — the inner, cavity-facing
-// surface — and this is the fillet on it. The outer corners are on the
-// compression side, and a convex corner concentrates nothing anyway, so making
-// those rounder buys no strength.
+// fillet_r fills every concave corner of the outline. It USED to be the
+// structural one at the arms' roots — the tension face there is the inner,
+// cavity-facing one, since the post pushes the arms OUTWARD — but those two
+// corners are now the corner reliefs below, and the root turns round relief_r.
+// It still sets where the reliefs' top ends sit, so they swallow it whole.
 //
-// It matters more than the size suggests. At 1.0 the stress concentration is
-// about 1.55, which put the peak stress while fitting at 42 MPa against PETG's
-// ~50: a margin of 1.18. At 2.5 it is 1.33 and 36 MPa, a margin of 1.38, for no
-// change in stiffness, grip or insertion force. Past ~2.5 it flattens out.
-//
-// Thickening the arm is NOT the alternative, and it is worth being clear why:
-// this spring is deflection-controlled, not force-controlled. sigma = E * 3 t d
-// / (2 L^2) is proportional to t, so a thicker arm carries MORE root stress at
-// the same imposed deflection, not less. The levers are the fillet, a longer
-// arm, or less preload.
+// Thickening the arm is NOT the way to cut root stress, and it is worth being
+// clear why: this spring is deflection-controlled, not force-controlled.
+// sigma = E * 3 t d / (2 L^2) is proportional to t, so a thicker arm carries
+// MORE root stress at the same imposed deflection, not less. The levers are the
+// root radius, a longer arm, or less interference.
 fillet_r       = 2.5;
+
+// ---- Corner relief --------------------------------------------------------------
+// The two inside corners where the arms meet the back wall are NOT filleted.
+//
+// They were, at fillet_r, and a concave fillet bulges INTO the cavity: against a
+// square post corner it left 0.28 mm of room, where the flats either side have
+// 0.7 and 1.2. The post's corners hit the fillets first, and a 0.2 mm print
+// undersize takes most of what is left.
+//
+// So instead of filling the corner, a slot is cut back INTO THE BACK WALL there:
+// the arm's inner face runs straight on past the back wall's face, down into the
+// wall by relief_depth, turns round a radius of relief_r, and comes back up. A
+// square post corner then sits in open space.
+//
+// Why into the back wall and not a round pocket at the corner itself: the
+// corner is also the arm's ROOT, the most stressed place in the part, and its
+// tension face is the arm's inner face — exactly the face a pocket would bite
+// into. Sinking the slot into the wall keeps that face straight and all but
+// uncut (see relief_off); the bend happens round the slot's bottom instead, in
+// the 6 mm wall rather than the 3.6 mm spring. It also makes the arm's free
+// length a little longer, which is in the right direction for stress.
+//
+// The slot is 2 * relief_r wide, which has to cover the whole fillet it
+// replaces (fillet_r), or a tail of fillet is left standing in the corner.
+//
+// relief_off pushes the slot that far OUTWARD, into the arm's root, so the
+// post's corner sits nearer the slot's middle than its edge — room for a burr
+// on the post's edge, or the first layers' squish. It is a trade, not free:
+// the arm is relief_off thinner at its most stressed section, and bending
+// stress goes as 1/t^2. springcheck.py charges the root for it. Kept to a
+// fraction of the arm on purpose; centring the slot on the corner outright
+// would take ~1 mm, and cost the root nearly half again in stress.
+relief_r       = 1.5;
+relief_depth   = 2.0;   // into the 6 mm back wall; 4 mm of it left behind
+relief_off     = 0.5;   // into the arm; the root is arm_t - relief_off thick
 chamfer        = 0.8;   // top and bottom edge chamfer. Must stay under
                         // lip_reach/2 or chamfered_extrude erodes the lip away.
 
-// preload is how far each arm is sprung open when the clip is on the post, and
-// therefore what generates the friction that stops it sliding down. It is set
-// by geometry alone: the arms' unloaded inner faces are 2*preload closer
-// together than the post plus its pads.
-// 0.5. This has now been wrong twice, in two different ways, and both are worth
-// keeping because they are different mistakes.
-//
-// The opening a post has to be forced into is post_w - 2 * preload — pad_t
-// cancels out of it entirely — so 2.5 meant presenting a 35 mm mouth to a 40 mm
-// post and springing each arm 2.5 mm to get it on. That is 36 MPa at the arm
-// root, and it snapped.
-//
-// It was sized from a friction budget that deliberately left out the load's own
-// moment as "conservative". That was the mistake: the moment is not a bonus,
-// it is where most of the grip comes from. A load hung off the hook presses the
-// back pad and the lips into the post with about 15 N each, worth ~13 N of
-// friction on its own — which is why the clip nearly held a helmet with NO pads
-// and no preload at all.
-//
-// So the preload only has to top that up to a sane margin.
-//
-// SECOND, at 1.0 it was still assuming the arm could supply that interference
-// everywhere the pad touched. It cannot — see pad_side_len. With the pads moved
-// to the compliant end of the arm the contact sits around 0.76 of the way
-// along, where the arm is (1/0.76)^3 = 2.3x stiffer than at its tip, so half
-// the interference gives more force than 1.0 mm did before.
-preload        = 0.5;
+// There is no preload any more — see "No pads" above. It was the arms' designed
+// interference with the post, and it was wrong three times before it went: 2.5
+// mm presented a 35 mm mouth to a 40 mm post and snapped the first print; it was
+// sized from a friction budget that left out the load's own moment, which is
+// where most of the grip comes from; and any interference along the arm is
+// interference at its root, where a cantilever has no deflection to give.
 
 // ---- The snap lips -------------------------------------------------------------
 // Each arm ends in a lip that reaches inward past the post's front face.
@@ -221,22 +236,23 @@ preload        = 0.5;
 // face tangent to the corner arc bears on it along a line the full height of
 // the collar, and it makes the capture elastic rather than rigid: the arms'
 // inward force resolves on the inclined face into a component that drives the
-// post BACK against the back pad, so it clamps itself fore and aft and there is
+// post BACK against the back wall, so it clamps itself fore and aft and there is
 // nothing left to rattle. That is why y_squeeze is gone.
 //
 //  3. That face was 45 deg, and the load's own moment could open it — see
 //     lip_cam. springcheck.py now checks the lips against the load as well as
 //     against a straight pull.
-// DERIVED from the catch, not set directly. The two are tied — what actually
-// overlaps the post is lip_reach - pad_t — and when lip_reach was a literal
-// that coupling went quiet: thinning the pads from 3.0 to 1.2 deepened the
-// catch from 2.0 to 3.8 mm without anyone asking, which took the spread an arm
-// has to survive from 2.5 to 4.8 and the root stress from 20 MPa to 39.
-//
-// Stated this way round, changing the pad moves the lip with it and the catch
-// stays what it says it is.
-lip_catch      = 1.5;   // what actually overlaps the post, seated
-lip_reach      = pad_t + lip_catch;   // inboard of the arm's inner face
+// lip_reach is DERIVED from the catch, not set directly. The two are tied —
+// what overlaps the post is lip_reach less the arm's clearance — and when
+// lip_reach was a literal that coupling went quiet: thinning the old TPU pads
+// deepened the catch from 2.0 to 3.8 mm without anyone asking, which took the
+// root stress from 20 MPa to 39. Stated this way round, changing the clearance
+// moves the lip with it and the catch stays what it says it is.
+// 2.0: what overlaps the post with the arms at rest. The grip lands spread the
+// tips a little once seated, and springcheck.py takes that off — what is left
+// is the real catch.
+lip_catch      = 2.0;
+lip_reach      = arm_clear + lip_catch;   // inboard of the arm's inner face
 lip_flat       = 2.0;   // crest length in y, past the cam face
 // The angle of the retention face's NORMAL away from the insertion (y) axis:
 // 0 would be a square face, 45 the old cam. It sets the ratio in which a load
@@ -257,7 +273,7 @@ lip_flat       = 2.0;   // crest length in y, past the cam face
 lip_cam        = 25;
 lip_clear      = 0.0;   // off the corner arc. Zero on purpose: the arms should
                         // arrive already bearing on the corners, since that
-                        // contact is what pulls the post onto the back pad.
+                        // contact is what pulls the post onto the back wall.
 
 // The lead-in ramp is the whole of the insertion mechanism: it converts the
 // push into arm spread at tan(lead_angle). Shallower is easier to press on and
@@ -318,16 +334,16 @@ tie_z          = collar_h / 2;
 
 // ---- Derived collar geometry ----------------------------------------------
 // Everything below is built around the DRAWN post, pw x pd — see fit_adjust.
-hw_in          = pw / 2 + pad_t - preload;         // arm inner face, unloaded
+hw_in          = pw / 2 + arm_clear;               // arm inner face
 x_out          = hw_in + arm_t;                    // arm outer face
-y_back_in      = -(pd / 2 + pad_t);                // back wall inner face
+y_back_in      = -(pd / 2 + back_clear);           // back wall inner face
 y_back_out     = y_back_in - back_t;               // ... and outer: the hook's root
 // The cam face lies on the line x sin(a) + y cos(a) = cam_c, with a = lip_cam,
-// tangent to the post's corner arc (centred at post_w/2 - r, post_d/2 - r) once
-// the arms are sprung. Its unit normal is (sin a, cos a), so the tangent
-// constant is just the arc centre projected onto it plus the radius — and a
-// post with a different corner reshapes the lip instead of silently
-// un-catching it, which is exactly how the first square face failed.
+// tangent to the post's corner arc (centred at pw/2 - r, pd/2 - r). Its unit
+// normal is (sin a, cos a), so the tangent constant is just the arc centre
+// projected onto it plus the radius — and a post with a different corner
+// reshapes the lip instead of silently un-catching it, which is exactly how the
+// first square face failed.
 //
 // It was written as x + y = c while the angle was fixed at 45; that form hid
 // the angle in a sqrt(2), and changing lip_cam would have changed nothing.
@@ -336,8 +352,29 @@ cam_cos        = cos(lip_cam);
 cam_c          = (pw / 2 - post_corner_r) * cam_sin
                + (pd / 2 - post_corner_r) * cam_cos
                + post_corner_r + lip_clear;
-cam_c_unl      = cam_c - preload * cam_sin;        // ... where it is DRAWN
-y_cam_start    = (cam_c_unl - hw_in * cam_sin) / cam_cos;   // leaves the arm face
+
+// Tangent with the arms SEATED, not at rest. The grip lands spread the tips by
+// grip_tip, and a cam drawn tangent at rest is carried grip_tip * sin(lip_cam)
+// clear of the corner by it — about 0.4 mm of fore-and-aft rattle, and a lip
+// that has to be pulled that far before it bites. springcheck.py caught it.
+//
+// grip_tip is the same spring springcheck.py uses: cantilever bending plus the
+// back wall's rotation at the root, which is a quarter of the compliance and
+// changes the tip-to-land ratio from 2.4 to 1.9. The arm length it needs
+// depends on y_cam_start, which depends on grip_tip, so it is taken with the
+// arms at rest — that moves the tip by under half a millimetre in 41.
+grip_y1        = pd / 2 - grip_front;              // front end of the land's flat
+grip_y0        = grip_y1 - grip_len;               // back end, where it bears
+arm_ia         = collar_h * pow(arm_t, 3) / 12;
+wall_ib        = collar_h * pow(back_t, 3) / 12;
+function arm_comp(a, x) = a * a * (3 * x - a) / (6 * petg_e_mpa * arm_ia)
+                        + a * (2 * hw_in) * x / (2 * petg_e_mpa * wall_ib);
+arm_free_rest  = (cam_c - hw_in * cam_sin) / cam_cos + (arm_clear + lip_catch) / 2
+               - y_back_in;
+grip_a         = grip_y0 - y_back_in;
+grip_tip       = grip * arm_comp(grip_a, arm_free_rest) / arm_comp(grip_a, grip_a);
+
+y_cam_start    = (cam_c - (hw_in + grip_tip) * cam_sin) / cam_cos; // leaves the arm face
 y_crest0       = y_cam_start + lip_reach * cam_sin / cam_cos; // meets the crest
 y_lip_end      = y_crest0 + lip_flat;              // end of the crest
 lead_len       = lip_reach / tan(lead_angle);
@@ -347,7 +384,7 @@ y_arm_end      = y_ramp_top + arm_nose;
 // Where the crest lands once seated, and the point where the face touches the
 // arc. The crest must be INBOARD of that point or the face never reaches the
 // arc at all.
-x_crest_seated = hw_in + preload - lip_reach;
+x_crest_seated = hw_in - lip_reach;
 x_arc_touch    = pw / 2 - post_corner_r + (post_corner_r + lip_clear) * cam_sin;
 
 // Release travel: how far the arms must spread for the crest to clear the
@@ -364,39 +401,23 @@ tie_y          = y_lip_end + tie_t / 2 + 0.4;
 arm_free       = y_cam_start + lip_reach / 2 - y_back_in;
 
 // How far the arm's TIP is spread at the worst moment of insertion: the lip's
-// crest, unloaded at hw_in - lip_reach, has to clear the post's side face at
-// post_w/2. This is the strain the part has to survive, and it is NOT
-// preload + lip_reach — hw_in already has the preload built into it, so adding
-// it again double-counts. It is also not additive with the pads: mid-arm the
-// post only asks for preload, less than this, so the tip governs and the arm
-// simply bends into a curve.
+// crest, at hw_in - lip_reach, has to clear the post's side face at pw/2. With
+// nothing else pushing the arms, that is just the catch — the arms are at rest
+// everywhere else, before and after.
 spread_peak    = pw / 2 - (hw_in - lip_reach);
 
-// ---- Derived pad geometry ---------------------------------------------------
+// ---- Derived grip-land geometry ---------------------------------------------
 // In params and not in clip.scad, because main.scad and the checkers `use`
 // clip.scad — and `use` imports modules but NOT variables, so anything derived
 // over there reads as undef from here. That is the repo's oldest trap.
-pad_h          = collar_h - 2 * pad_margin;          // along the post
-pad_z          = (collar_h - pad_h) / 2;             // centred in the collar
-
-// The back pad stops clear of the collar's inner corner fillets, which bulge
-// into the cavity by fillet_r. Sitting a flat pad across one would rock it.
-pad_back_w     = 2 * (hw_in - fillet_r - pad_clear);
-
-// The side pads are anchored at their FRONT end and run back pad_side_len, so
-// they sit on the compliant end of the arm rather than at the rigid root.
-pad_side_y1    = pd / 2 - pad_front;
-pad_side_y0    = pad_side_y1 - pad_side_len;
-pad_side_w     = pad_side_len;
+grip_x         = pw / 2 - grip;                    // the land's face
 
 // Tip-loaded cantilever deflection shape: the fraction of the TIP's deflection
 // available at a fraction r of the way along. This is the curve that makes a
-// full-length pad impossible and a short forward one fine.
+// full-length squeeze impossible and a short forward one fine.
 function cant_shape(r) = (3 * r * r - r * r * r) / 2;
-pad_r0         = (pad_side_y0 - y_back_in) / arm_free;   // pad's back edge
-pad_r1         = (pad_side_y1 - y_back_in) / arm_free;   // ... and its front
-pad_shape      = cant_shape(pad_r0);      // the worst point on the pad
-pad_r_mid      = (pad_r0 + pad_r1) / 2;
+grip_r0        = (grip_y0 - grip_lead - y_back_in) / arm_free;   // ramp foot
+grip_shape     = cant_shape(grip_r0);
 
 // ---- The hook ------------------------------------------------------------------
 // A stem rising out of the back wall at hook_rake, with an upturn at the end
@@ -656,13 +677,18 @@ function clip_min(s) =
 // one that decides whether this design works at all — the plastic is nowhere
 // near its limit and the spring is nowhere near its strain.
 load_kg        = 1.0;
-mu_tpu         = 0.6;   // TPU on painted steel, deliberately pessimistic
-                        // (0.7-1.0 is the usual range)
-mu_petg        = 0.25;  // and bare PETG, where the lips bear on the post
+mu_petg        = 0.25;  // PETG on painted steel, deliberately pessimistic —
+                        // every contact is bare PETG now
+
+// What a nylon tie pulled up by hand puts through the loop. 4.8 mm ties are
+// rated in the hundreds of newtons; a firm pull with fingers is far less than
+// that, and this is meant to be the low end of it. springcheck.py reports the
+// tension the grip actually NEEDS, so this only has to be honest, not exact.
+tie_hand_n     = 40;
 
 // The load's own moment is NOT a bonus — it is where most of the grip comes
-// from, and leaving it out of the budget is what oversized the preload by 4x
-// and broke the first print. A load on the hook presses the back pad and the
+// from, and leaving it out of the budget is what oversized the old preload by
+// 4x and broke the first print. A load on the hook presses the back wall and the
 // lips into the post as a couple; couple_frac is how far apart those two
 // contacts act, as a fraction of the collar's height. 2/3 is a judgement, not a
 // measurement, and it is the softest number in springcheck.py — but the clip
@@ -680,25 +706,33 @@ assert(x_crest_seated < x_arc_touch,
 assert(lip_cam > 0 && lip_cam < 60, "lip_cam outside the range the tangent maths assumes");
 assert(lip_release > 1.0,
        "less than 1 mm of straight-pull travel holds the clip on");
-assert(pad_side_y1 < y_cam_start,
-       "the side pads run into the lip's cam face");
-// The one the first print actually failed on. A pad reaching back to where the
+assert(grip_y1 + grip_lead < y_cam_start,
+       "the grip lands run into the lip's cam face");
+// The one the first print actually failed on. Squeeze reaching back to where the
 // arm cannot deflect does not grip there, it jams there.
-assert(pad_shape > 0.4,
-       str("side pads reach back to ", pad_r0,
-           " of the arm, where only ", pad_shape,
-           " of the tip's deflection is available — shorten pad_side_len"));
-assert(pad_side_y0 > y_back_in + fillet_r + pad_clear,
-       "the side pads reach into the collar's inner corner fillet");
+assert(grip_shape > 0.3,
+       str("grip lands reach back to ", grip_r0,
+           " of the arm, where only ", grip_shape,
+           " of the tip's deflection is available — shorten grip_len"));
+assert(grip > 0 && grip < lip_catch,
+       "the grip lands would spread the arms by more than the lips catch");
+assert(2 * relief_r >= fillet_r,
+       "the corner relief is narrower than the fillet it replaces; a tail is left in the corner");
+assert(relief_off >= 0 && arm_t - relief_off >= 0.8 * arm_t,
+       "relief_off takes more than a fifth of the arm at its root");
+assert(back_t - relief_depth >= min_wall,
+       "the corner relief leaves less than min_wall of back wall");
+assert(grip_y0 - grip_lead > y_back_in + fillet_r + relief_r,
+       "the grip lands reach back into the corner relief");
 assert(hook_rake > max_overhang_angle,
        "stem underside is shallower than the printer's overhang limit");
 // An oversize post pushes the cams and spreads the arms a little further while
 // seated — the cams make the post_d axis elastic, so nothing has to crush.
-// Measured against the spread FITTING already demands, not against the preload
-// — the preload is a different axis and comparing the two says nothing.
+// Measured against the spread FITTING already demands.
 assert((post_d_max - post_d) * tan(lip_cam) < spread_peak,
        "an oversize post costs more arm travel than fitting the clip does");
-assert(pad_t - preload > 0, "pad is thinner than the interference it sets");
+assert(arm_clear >= 0 && back_clear >= 0,
+       "a negative clearance is interference at the arm's root — use grip, at the tip");
 assert(chamfer * 2 < lip_reach,
        "chamfered_extrude erodes by `chamfer`; the lip would vanish");
 assert(corner_r < lip_flat, "the lip's crest would be rounded away entirely");

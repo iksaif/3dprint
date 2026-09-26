@@ -1,16 +1,7 @@
-// Interference between parts that mate. A correct fit leaves only zero-volume
-// contact — a face resting on a face — so any real overlap shows up as a solid
-// with measurable volume.
+// Intersections springcheck.py measures. There is one part now, so there is
+// no pair that has to mate at zero volume and nothing for fitcheck.py to read.
 //
-// pads    the three TPU pads against the collar they sit in. Each pad's flat
-//         back is coincident with the face it rests on and its teeth all face
-//         the other way, so a correct set reports zero. This is the case that
-//         catches a pad placed with its thickness axis pointing the wrong way —
-//         teeth INTO the PETG instead of onto the post — which is invisible in
-//         a render because pad and collar are much the same colour, and which
-//         the U version got wrong exactly once.
-//
-// catch   NOT a "must be zero" case, and not read by fitcheck.py at all —
+// catch   NOT a "must be zero" case —
 //         springcheck.py drives it. The lips are placed where they sit once the
 //         post has sprung the arms open, then pulled forward by `pull`, and
 //         intersected with the post. The cam face is TANGENT to the post's
@@ -21,16 +12,12 @@
 include <../src/params.scad>
 use <../src/clip.scad>
 
-which = "pads";
+which = "catch";
 pull  = 0;      // mm the clip has been pulled OFF the post, for `catch`
 
-// These cases are measured by VOLUME, not looked at, and the collar is a
-// minkowski. 48 facets keeps a check run to a few seconds; the chord error on
-// the post's r3 corner is 6 microns, which is four orders below the volumes
-// being compared.
+// Measured by VOLUME, not looked at. 48 facets keeps a check run to a few
+// seconds, and chord error is orders below the volumes being compared.
 $fn = 48;
 
-if (which == "pads")
-    intersection() { collar(); pads(); }
-else if (which == "catch")
+if (which == "catch")
     intersection() { seated_lips(pull); post_solid(); }

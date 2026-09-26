@@ -30,8 +30,16 @@ function collar_pts() = [
     [ hw_in - lip_reach, y_lip_end],            // down the lead-in ramp
     [ hw_in - lip_reach, y_crest0],             // the crest
     [ hw_in,            y_cam_start],           // the cam face onto the corner
+    [ hw_in,            grip_y1 + grip_lead],   // ramp onto the grip land
+    [ grip_x,           grip_y1],
+    [ grip_x,           grip_y0],               // the land itself
+    [ hw_in,            grip_y0 - grip_lead],   // ramp off it
     [ hw_in,            y_back_in],             // the arm's inner face
     [-hw_in,            y_back_in],             // across the back wall
+    [-hw_in,            grip_y0 - grip_lead],
+    [-grip_x,           grip_y0],
+    [-grip_x,           grip_y1],
+    [-hw_in,            grip_y1 + grip_lead],
     [-hw_in,            y_cam_start],
     [-hw_in + lip_reach, y_crest0],
     [-hw_in + lip_reach, y_lip_end],
@@ -41,7 +49,33 @@ function collar_pts() = [
     [-x_out,            y_arm_end - tab_len],
 ];
 
-module collar_2d() { smooth2d(fillet_r, corner_r) polygon(collar_pts()); }
+// The corner reliefs: a slot at each inside back corner, sunk into the back
+// wall, whose outer side is the arm's inner face carried on — relief_off
+// further out. Its top end is centred level with where fillet_r's fillet met
+// the arm, so the slot swallows the whole fillet — see relief_r in params.scad
+// for why it goes into the wall rather than into the arm.
+//
+// Cut AFTER smooth2d, not before: the closing that fillets concave corners would
+// otherwise fill a slot this narrow straight back in. The edges the cut leaves
+// are convex, so a small opening rounds them without touching anything else —
+// every other convex corner is already rounded to corner_r, which is larger.
+relief_edge_r = 0.4;
+module corner_reliefs_2d() {
+    cx = hw_in + relief_off - relief_r;
+    for (m = [0, 1]) mirror([m, 0, 0])
+        hull() {
+            translate([cx, y_back_in + fillet_r]) circle(relief_r);
+            translate([cx, y_back_in - relief_depth + relief_r]) circle(relief_r);
+        }
+}
+
+module collar_2d() {
+    offset(r = relief_edge_r) offset(delta = -relief_edge_r)
+        difference() {
+            smooth2d(fillet_r, corner_r) polygon(collar_pts());
+            corner_reliefs_2d();
+        }
+}
 
 // A slot through each lip for a nylon cable tie. Not a teardrop and not a plain
 // rectangle: the profile is a rectangle with a 45 deg peak on top, so the
@@ -170,55 +204,6 @@ module hook(s) {
 
 module clip(size = "m") { union() { collar(); hook(size_idx(size)); } }
 
-// ---------- the TPU pads ----------------------------------------------------
-// Three flat slabs: one for the back wall, two for the arms. Each is modelled
-// LYING DOWN, which is how it prints — x along the post, y across the face,
-// z the thickness — and moved onto its face only for the assembly and the fit
-// check. At pad_t they are six layers each.
-//
-// One pad, flat on the bed: x 0..pad_h, y 0..w, z 0..pad_t. A plain rounded
-// slab — no profile, no teeth, no orientation to get wrong. Both faces are the
-// same, so there is no wrong way round to fit it.
-module pad_flat(w) {
-    linear_extrude(pad_t) translate([pad_corner_r, pad_corner_r])
-        offset(pad_corner_r) offset(-pad_corner_r)
-            translate([-pad_corner_r, -pad_corner_r])
-                square([pad_h, w]);
-}
-
-module pad_back_flat() { pad_flat(pad_back_w); }
-module pad_side_flat() { pad_flat(pad_side_w); }
-
-// Onto their faces. Written as explicit matrices rather than a stack of
-// rotates: each one says outright which local axis becomes which global one,
-// and the thickness axis — the one that must end up pointing AT the post — is
-// the row that is easy to get backwards and impossible to spot in a render.
-//
-//   back   local x -> +z (up the post), y -> +x, z -> +y off the wall
-//   right  local x -> +z,               y -> +y, z -> -x off the arm
-//
-// With flat pads a reversed thickness axis no longer ruins the grip — both
-// faces are the same — but it would still bury the pad in the PETG, which is
-// what the fit check is for.
-module pad_place(where) {
-    if (where == "back")
-        multmatrix([[0, 1, 0, -pad_back_w / 2],
-                    [0, 0, 1, y_back_in],
-                    [1, 0, 0, pad_z]]) children();
-    else if (where == "right")
-        multmatrix([[0, 0, -1, hw_in],
-                    [0, 1,  0, pad_side_y0],
-                    [1, 0,  0, pad_z]]) children();
-    else
-        mirror([1, 0, 0]) pad_place("right") children();
-}
-
-module pads() {
-    pad_place("back")  pad_back_flat();
-    pad_place("right") pad_side_flat();
-    pad_place("left")  pad_side_flat();
-}
-
 // ---------- the post --------------------------------------------------------
 // Solid, because springcheck.py intersects things with it; post_mock is the
 // same thing dressed for a render. Drawn at pw x pd — the post the geometry is
@@ -260,22 +245,19 @@ module calib_slice() {
 
 // ---------- the assembly, as it actually sits -------------------------------
 // Parts are modelled UNSPRUNG, because that is what gets printed. Drawn that
-// way against a nominal post, the post reads as buried 2.5 mm into the pads on
-// each side, which looks like a mistake and is not one: it is the preload, and
-// on a real post the arms flex out by exactly that much and carry the pads
-// with them. Nothing is crushed — the teeth are only 0.8 mm proud.
+// way, the grip lands read as buried grip deep in the post, which is the
+// interference doing its job: on a real post the arms flex out and carry the
+// lands with them.
 //
-// A review render that shows 2.5 mm of interference is still a bad review
-// render, so this shears each arm to where it actually sits. The shear is
-// linear in y from the back wall's inner face, reaching preload at arm_free,
-// which is the tip deflection of a cantilever to first order — near enough for
-// a picture, and far nearer than not bending it at all.
+// So this shears each arm to where it actually sits: linear in y from the back
+// wall's inner face, reaching grip_tip at arm_free. A straight line is not the
+// cantilever's curve, but it is near enough for a picture.
 //
 // The hook is left out and drawn unsheared: it hangs off the back wall, where
-// the shear is under 0.3 mm, and running it through the mirror would saw it in
-// half down the middle.
+// there is no shear, and running it through the mirror would saw it in half
+// down the middle.
 module seated() {
-    k = preload / arm_free;
+    k = grip_tip / arm_free;
     for (m = [0, 1]) mirror([m, 0, 0]) intersection() {
         translate([0, -300, -80]) cube([300, 600, 400]);
         multmatrix([[1, k, 0, -k * y_back_in],
@@ -285,7 +267,7 @@ module seated() {
 }
 
 // The lip as it sits when the clip is SEATED — i.e. carried outward by the
-// preload the post has already sprung into the arms. Intersected with the post
+// spread the grip lands have already sprung into the arms. Intersected with the post
 // this is the material that actually holds the clip on, and it is the number
 // the whole snap depends on. Modelled here rather than in the fit check so the
 // assembly view can show it too.
@@ -303,7 +285,7 @@ module seated() {
 module seated_lips(dy = 0) {
     x0 = hw_in - lip_reach;
     x1 = x_out + tab_out + 1;
-    for (m = [0, 1]) mirror([m, 0, 0]) translate([preload, -dy, 0]) intersection() {
+    for (m = [0, 1]) mirror([m, 0, 0]) translate([grip_tip, -dy, 0]) intersection() {
         collar();
         translate([x0, y_cam_start, -1])
             cube([x1 - x0, y_lip_end - y_cam_start, collar_h + 2]);

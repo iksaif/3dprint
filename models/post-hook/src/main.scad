@@ -3,9 +3,9 @@
 //
 //   openscad -D 'part="clip_m"' -o clip_m.stl main.scad
 //
-// part:  clip_s | clip_m | clip_l | pad_back | pad_side | assembly | dims
+// part:  clip_s | clip_m | clip_l | calib | assembly | dims
 //
-// One collar, three hooks. Both printable parts are modelled in their print
+// One part, one material, three hook sizes. It is modelled in its print
 // orientation already — z is the post's axis AND the print axis — so the
 // assembly view is the same geometry the slicer gets, with nothing rotated on
 // the way to the STL.
@@ -16,47 +16,46 @@ use <clip.scad>
 part      = "assembly";
 show_post = true;
 show_size = "m";        // which hook the assembly view wears
-// Shear the arms out to where they sit on a real post. Off shows the parts as
+// Shear the arms out to where they sit on a real post. Off shows the part as
 // PRINTED, which is honest about the geometry and misleading about the fit —
-// the post then reads as buried `preload` deep in the pads on each side.
+// the grip lands then read as buried `grip` deep in the post.
 show_seated = true;
 
 c_clip  = "#3f4854";
-c_pad   = "#1f2937";
 
 if (part == "clip_s")      clip("s");
 else if (part == "clip_m") clip("m");
 else if (part == "clip_l") clip("l");
-else if (part == "pad_back") pad_back_flat();
-else if (part == "pad_side") pad_side_flat();
 else if (part == "calib")    calib_slice();
 else if (part == "assembly") {
     if (show_post) post_mock();
-    if (show_seated) {
-        color(c_clip)  { seated() collar(); hook(size_idx(show_size)); }
-        color(c_pad) seated() pads();
-    } else {
-        color(c_clip)  clip(show_size);
-        color(c_pad) pads();
-    }
+    color(c_clip)
+        if (show_seated) { seated() collar(); hook(size_idx(show_size)); }
+        else clip(show_size);
 } else if (part == "dims") {
     kg = load_kg;
 
     echo(str("post: ", post_w, " x ", post_d, " mm, gripped over ", collar_h,
              " mm of height; collar is ", 2 * (x_out + tab_out), " x ",
              y_arm_end - y_back_out, " x ", collar_h, " mm"));
+    echo(str("fit_adjust ", fit_adjust, ": drawn around a ", pw, " x ", pd,
+             " post, to land on ", post_w, " x ", post_d, " as printed"));
 
-    // ---- the fit, as the three surfaces that decide it --------------------
-    // THE number the first physical test turned on. The mouth a post has to be
-    // forced into is post_w - 2*preload, and pad_t cancels out of it entirely —
-    // so thinning the pads does not open it by a micron. At preload 2.5 this
-    // read 35 mm for a 40 mm post and the arm snapped getting it on.
-    echo(str("opening: ", post_w - 2 * preload, " mm for a ", post_w,
-             " mm post — ", 2 * preload, " mm of squeeze, ", preload,
-             " per arm  (pad_t cancels; only preload sets this)"));
-    echo(str("arm inner faces ", 2 * hw_in, " mm apart unloaded, post + pads is ",
-             post_w + 2 * pad_t, " -> each arm springs ", preload, " mm"));
-    echo(str("lip reaches ", lip_reach, " mm inboard; seated its crest sits at x ",
+    // ---- the fit, as the surfaces that decide it --------------------------
+    // What to hold the calipers to. All as DRAWN — a print comes out
+    // fit_adjust a side smaller, which is the point of fit_adjust.
+    echo(str("between the arms: ", 2 * hw_in, " mm (", arm_clear,
+             " clear a side), across the grip lands: ", 2 * grip_x,
+             " (", grip, " interference a side), mouth between the crests: ",
+             2 * x_crest_seated, " mm"));
+    echo(str("grip lands ", grip_len, " mm long, ending ", grip_front,
+             " mm short of the post's front, ", grip_lead,
+             " mm ramps; they spread each arm tip ",
+             round(grip_tip * 100) / 100, " mm"));
+    echo(str("corner relief: ", 2 * relief_r, " mm slot, ", relief_depth,
+             " mm into the ", back_t, " mm back wall — a square post corner ",
+             "clears it"));
+    echo(str("lip reaches ", lip_reach, " mm inboard; unsprung its crest sits at x ",
              x_crest_seated, ", inboard of where the face meets the corner at ",
              round(x_arc_touch * 100) / 100, "  (it must be, or the cam meets nothing)"));
     echo(str("cam face normal ", lip_cam, " deg off the insertion axis, tangent to the r",
@@ -72,14 +71,7 @@ else if (part == "assembly") {
              " is absorbed by the cams — a post ", post_d_max - post_d,
              " mm deep just springs the arms ",
              round((post_d_max - post_d) * tan(lip_cam) * 100) / 100,
-             " mm further — the cams make that axis elastic, so nothing has to ",
-             "crush to absorb it"));
-
-    echo(str("pads: 3 plain flat slabs, ", pad_t, " mm thick — back ", pad_h,
-             " x ", pad_back_w, ", sides 2 x ", pad_h, " x ", pad_side_w,
-             " mm, stopping ", pad_front, " mm short of the post's front"));
-    echo(str("no teeth and no orientation: both faces are the same, so there is ",
-             "no wrong way round to fit one"));
+             " mm further"));
 
     if (tie_slot)
         echo(str("cable tie: ", tie_w, " x ", tie_t,

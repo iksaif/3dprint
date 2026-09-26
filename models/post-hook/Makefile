@@ -11,20 +11,16 @@ SOURCES := $(wildcard src/*.scad) $(wildcard $(REPO)/lib/scad/*.scad)
 
 # One collar, three hooks. The collar is identical in all three, so a size is a
 # row in the table in params.scad and nothing else.
-PARTS   := clip_s clip_m clip_l pad_back pad_side
+PARTS   := clip_s clip_m clip_l
 
-PLATES     := petg tpu test
+PLATES     := petg test
 PLATE_SCAD := src/plates.scad
 
 DIMS_PART := dims
 
-# One case, and it is the only pair in the model that is supposed to touch
-# without overlapping. Everything else here either has to interfere on purpose
-# (the arms on the post, the lips on its front, the studs in their holes) or
-# never meets at all — and a boolean check reports zero for both of those, which
-# is why the interference that MATTERS is measured by springcheck.py instead.
-FIT_SCAD  := tools/fitcheck.scad
-FIT_CASES := pads:the three TPU pads vs the collar they sit in
+# No FIT_CASES: it is one part, so nothing mates at zero volume. The overlaps
+# that matter — the lips on the post's front — are driven by springcheck.py
+# through tools/fitcheck.scad.
 
 # The spring, and the catch. Neither is answerable by a fit check: one is a
 # force and the other is an overlap that only exists once the arms are sprung.
@@ -39,7 +35,7 @@ include $(REPO)/mk/model.mk
 # has exactly the full clip's fit, because the collar is a prism along print Z.
 #
 #   make calib      -> build/plates/calib.3mf
-CALIB_STEPS  := 0 0.2 0.4 0.6 0.8
+CALIB_STEPS  := 0.1 0.2 0.3
 CALIB_STLS    = $(addprefix $(OUT)/calib/calib_,$(addsuffix .stl,$(CALIB_STEPS)))
 comma := ,
 empty :=
