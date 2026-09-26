@@ -29,7 +29,7 @@ function collar_pts() = [
     [ hw_in,            y_ramp_top],            // the nose carrying the tie slot
     [ hw_in - lip_reach, y_lip_end],            // down the lead-in ramp
     [ hw_in - lip_reach, y_crest0],             // the crest
-    [ hw_in,            y_cam_start],           // the 45 deg cam onto the corner
+    [ hw_in,            y_cam_start],           // the cam face onto the corner
     [ hw_in,            y_back_in],             // the arm's inner face
     [-hw_in,            y_back_in],             // across the back wall
     [-hw_in,            y_cam_start],

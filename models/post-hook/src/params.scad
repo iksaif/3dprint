@@ -177,8 +177,8 @@ preload        = 0.5;
 // ---- The snap lips -------------------------------------------------------------
 // Each arm ends in a lip that reaches inward past the post's front face.
 //
-// THE RETENTION FACE IS A 45 DEG CAM TANGENT TO THE POST'S CORNER, and getting
-// there took two wrong answers worth recording.
+// THE RETENTION FACE IS A CAM TANGENT TO THE POST'S CORNER (lip_cam, below), and
+// getting there took three wrong answers worth recording.
 //
 // It began as a square face sitting y_squeeze inside the post's nominal front,
 // with the catch quoted as lip_reach - preload. Both halves were wrong:
@@ -198,17 +198,15 @@ preload        = 0.5;
 // they SIT and intersects them with the post: the intersection came back empty.
 //
 // The fix is to stop pretending the corner is square and shape the lip to it. A
-// 45 deg face tangent to the corner arc bears on it along a line the full
-// height of the collar, and it makes the whole capture elastic rather than
-// rigid: the arms' inward force resolves on that 45 deg face into a component
-// that drives the post BACK against the back pad, so it clamps itself fore
-// and aft and there is nothing left to rattle. That is why y_squeeze is gone —
-// it existed to take up a slop this geometry cannot have.
+// face tangent to the corner arc bears on it along a line the full height of
+// the collar, and it makes the capture elastic rather than rigid: the arms'
+// inward force resolves on the inclined face into a component that drives the
+// post BACK against the back pad, so it clamps itself fore and aft and there is
+// nothing left to rattle. That is why y_squeeze is gone.
 //
-// It also gives removal a number instead of a hope. Pulling the clip off drives
-// the corner up the 45 deg face at a force ratio of tan(45) = 1, so the pull-off
-// force is just the force to spread the arms until the crest clears the post's
-// widest point. springcheck.py reports it.
+//  3. That face was 45 deg, and the load's own moment could open it — see
+//     lip_cam. springcheck.py now checks the lips against the load as well as
+//     against a straight pull.
 // DERIVED from the catch, not set directly. The two are tied — what actually
 // overlaps the post is lip_reach - pad_t — and when lip_reach was a literal
 // that coupling went quiet: thinning the pads from 3.0 to 1.2 deepened the
@@ -220,7 +218,23 @@ preload        = 0.5;
 lip_catch      = 1.5;   // what actually overlaps the post, seated
 lip_reach      = pad_t + lip_catch;   // inboard of the arm's inner face
 lip_flat       = 2.0;   // crest length in y, past the cam face
-lip_cam        = 45;    // cam angle. 45 makes pull-off force equal spread force
+// The angle of the retention face's NORMAL away from the insertion (y) axis:
+// 0 would be a square face, 45 the old cam. It sets the ratio in which a load
+// pressing the lip onto the post's corner is turned into outward push on the
+// arm — tan(lip_cam - friction angle).
+//
+// 25, not 45. The 45 deg cam was chosen so a straight pull would release the
+// clip, and because a square face could not catch an r3 corner. Neither holds
+// now: the thumb tabs are the release, and the posts are near square. What 45
+// cost was the one load case nothing checked — the load's OWN moment. It
+// presses the lip tops into the post's front corners, and at 45 deg about 60%
+// of that came back as outward push on the arm tips: 0.85 mm of a 1.26 mm
+// catch at 1 kg static, which a helmet dropped onto the hook would have
+// doubled. At 25 deg it is 0.19 of the push.
+//
+// The price is that a straight pull no longer removes it — about 5x the force.
+// Squeeze the tabs.
+lip_cam        = 25;
 lip_clear      = 0.0;   // off the corner arc. Zero on purpose: the arms should
                         // arrive already bearing on the corners, since that
                         // contact is what pulls the post onto the back pad.
@@ -287,28 +301,36 @@ hw_in          = post_w / 2 + pad_t - preload;   // arm inner face, unloaded
 x_out          = hw_in + arm_t;                    // arm outer face
 y_back_in      = -(post_d / 2 + pad_t);          // back wall inner face
 y_back_out     = y_back_in - back_t;               // ... and outer: the hook's root
-// The cam face lies on the line x + y = cam_c, tangent to the post's corner arc
-// (centred at post_w/2 - r, post_d/2 - r) once the arms are sprung. Solving the
-// point-to-line distance for r + lip_clear gives the constant outright, so a
+// The cam face lies on the line x sin(a) + y cos(a) = cam_c, with a = lip_cam,
+// tangent to the post's corner arc (centred at post_w/2 - r, post_d/2 - r) once
+// the arms are sprung. Its unit normal is (sin a, cos a), so the tangent
+// constant is just the arc centre projected onto it plus the radius — and a
 // post with a different corner reshapes the lip instead of silently
-// un-catching it — which is exactly how the square face failed.
-cam_c          = post_w / 2 + post_d / 2 - 2 * post_corner_r
-                 + sqrt(2) * (post_corner_r + lip_clear);
-cam_c_unl      = cam_c - preload;                  // ... where it is DRAWN
-y_cam_start    = cam_c_unl - hw_in;                // face leaves the arm's face
-y_crest0       = y_cam_start + lip_reach;          // ... and meets the crest
+// un-catching it, which is exactly how the first square face failed.
+//
+// It was written as x + y = c while the angle was fixed at 45; that form hid
+// the angle in a sqrt(2), and changing lip_cam would have changed nothing.
+cam_sin        = sin(lip_cam);
+cam_cos        = cos(lip_cam);
+cam_c          = (post_w / 2 - post_corner_r) * cam_sin
+               + (post_d / 2 - post_corner_r) * cam_cos
+               + post_corner_r + lip_clear;
+cam_c_unl      = cam_c - preload * cam_sin;        // ... where it is DRAWN
+y_cam_start    = (cam_c_unl - hw_in * cam_sin) / cam_cos;   // leaves the arm face
+y_crest0       = y_cam_start + lip_reach * cam_sin / cam_cos; // meets the crest
 y_lip_end      = y_crest0 + lip_flat;              // end of the crest
 lead_len       = lip_reach / tan(lead_angle);
 y_ramp_top     = y_lip_end + lead_len;      // where the lead-in meets the arm
 y_arm_end      = y_ramp_top + arm_nose;
 
-// Where the crest lands once seated, and the arc's own 45 deg point. The crest
-// must be INBOARD of that point or the cam face never reaches the arc at all.
+// Where the crest lands once seated, and the point where the face touches the
+// arc. The crest must be INBOARD of that point or the face never reaches the
+// arc at all.
 x_crest_seated = hw_in + preload - lip_reach;
-x_arc_45       = post_w / 2 - post_corner_r + post_corner_r / sqrt(2);
+x_arc_touch    = post_w / 2 - post_corner_r + (post_corner_r + lip_clear) * cam_sin;
 
-// Straight-pull release: how far the arms must spread for the crest to clear
-// the post's widest point. With a 45 deg cam this IS the pull-off travel.
+// Release travel: how far the arms must spread for the crest to clear the
+// post's widest point. Squeezing the thumb tabs is what supplies it.
 lip_release    = post_w / 2 - x_crest_seated;
 
 // Anchored to the END of the crest, because everything behind it is either cam
@@ -617,10 +639,11 @@ couple_frac    = 0.67;
 // ---- Asserts ---------------------------------------------------------------
 // The failure modes that are invisible in a render, checked in source.
 // The two that the square-faced lip would have failed, had they existed. The
-// first is the whole lesson: the crest has to reach past the corner arc's own
-// 45 deg point, or the cam face floats clear of the post and catches nothing.
-assert(x_crest_seated < x_arc_45,
-       "seated lip crest sits outboard of the corner's 45 deg point — it catches air");
+// first is the whole lesson: the crest has to reach past the point where the
+// face touches the corner arc, or the face floats clear and catches nothing.
+assert(x_crest_seated < x_arc_touch,
+       "seated lip crest sits outboard of where the face meets the corner — it catches air");
+assert(lip_cam > 0 && lip_cam < 60, "lip_cam outside the range the tangent maths assumes");
 assert(lip_release > 1.0,
        "less than 1 mm of straight-pull travel holds the clip on");
 assert(pad_side_y1 < y_cam_start,
@@ -635,12 +658,10 @@ assert(pad_side_y0 > y_back_in + fillet_r + pad_clear,
        "the side pads reach into the collar's inner corner fillet");
 assert(hook_rake > max_overhang_angle,
        "stem underside is shallower than the printer's overhang limit");
-// post_d tolerance used to be absorbed by the teeth crushing. It is not any
-// more, and it does not need to be: the 45 deg cams made that axis elastic, so
-// a deeper post just springs the arms a little further.
 // An oversize post pushes the cams and spreads the arms a little further while
-// seated. Measured against the spread FITTING already demands, not against the
-// preload — the preload is a different axis and comparing the two says nothing.
+// seated — the cams make the post_d axis elastic, so nothing has to crush.
+// Measured against the spread FITTING already demands, not against the preload
+// — the preload is a different axis and comparing the two says nothing.
 assert((post_d_max - post_d) * tan(lip_cam) < spread_peak,
        "an oversize post costs more arm travel than fitting the clip does");
 assert(pad_t - preload > 0, "pad is thinner than the interference it sets");

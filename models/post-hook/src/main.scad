@@ -56,17 +56,17 @@ else if (part == "assembly") {
     echo(str("arm inner faces ", 2 * hw_in, " mm apart unloaded, post + pads is ",
              post_w + 2 * pad_t, " -> each arm springs ", preload, " mm"));
     echo(str("lip reaches ", lip_reach, " mm inboard; seated its crest sits at x ",
-             x_crest_seated, ", inboard of the corner arc's 45 deg point at ",
-             round(x_arc_45 * 100) / 100, "  (it must be, or the cam meets nothing)"));
-    echo(str("cam face at ", lip_cam, " deg tangent to the r", post_corner_r,
-             " corner, leaving the arm's face at y ",
+             x_crest_seated, ", inboard of where the face meets the corner at ",
+             round(x_arc_touch * 100) / 100, "  (it must be, or the cam meets nothing)"));
+    echo(str("cam face normal ", lip_cam, " deg off the insertion axis, tangent to the r",
+             post_corner_r, " corner, leaving the arm's face at y ",
              round(y_cam_start * 100) / 100, "; ", lip_release,
-             " mm of release travel holds it on"));
+             " mm of release travel, supplied by squeezing the tabs"));
     echo(str("peak spread on the way on: ", spread_peak,
              " mm per arm, over an arm ", round(arm_free * 10) / 10, " mm long"));
 
-    // The post_d axis is elastic now, not rigid: the 45 deg cams turn a deeper
-    // post into a little more arm spread instead of a jam.
+    // The post_d axis is elastic, not rigid: the cams turn a deeper post into a
+    // little more arm spread instead of a jam.
     echo(str("post depth ", post_d_min, "-", post_d_max,
              " is absorbed by the cams — a post ", post_d_max - post_d,
              " mm deep just springs the arms ",

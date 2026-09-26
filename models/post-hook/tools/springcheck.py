@@ -20,11 +20,18 @@ other check in the repo can ask.
    sit in use, and requires it to be large.
 
 The spring model is a cantilever of length arm_free, section collar_h x arm_t,
-rooted at the back wall's inner face. It is deliberately the simple one, and it
-reads LOW by maybe 20-30%: the real arm has a fillet at the root, a stiff lip at
-the tip, and gets help from the back wall, all of which stiffen it. Reading low
-is the safe direction for the grip margin and the wrong one for the insertion
-force, which is why the insertion figure is quoted as "at least".
+whose root is allowed to rotate as the back wall bends under the arms' moments.
+That rotation is about a quarter of the compliance. An earlier version left it
+out and claimed the back wall stiffened the arm, which had the sign backwards:
+it overstated every force by ~25%. What is still left out — the fillet at the
+root and the stiff lip at the tip — does stiffen it, somewhat, which is why the
+insertion figure is quoted as "at least".
+
+3. DOES THE LOAD OPEN THE LIPS?  The load's moment presses the lip tops into the
+   post's corners, and the cam face turns part of that into outward push on
+   the arms. With a 45 deg face a dropped-on helmet would have popped them.
+   Checked with a dynamic factor, against the catch that is actually left once
+   the pads have spread the tip.
 """
 import math
 import os
@@ -92,6 +99,10 @@ def render_case(which, **kw):
         cmd += ["-D", f"{k}={v}"]
     try:
         r = subprocess.run(cmd + [scad], capture_output=True, text=True)
+        # OpenSCAD exits non-zero on an empty top-level object, which for the
+        # tangent-at-rest case is the CORRECT answer, not a broken render.
+        if "top level object is empty" in r.stderr:
+            return 0.0
         if r.returncode != 0:
             print(r.stderr.strip(), file=sys.stderr)
             return None
@@ -119,22 +130,40 @@ def main():
     # scraper only sees plain numbers and would silently miss an expression.
     lip_reach = pad_t + lip_catch
     hw_in = post_w / 2 + pad_t - preload
-    cam_c = post_w / 2 + post_d / 2 - 2 * r + math.sqrt(2) * (r + p["lip_clear"])
-    y_cam_start = cam_c - preload - hw_in
+    cam = math.radians(p["lip_cam"])
+    cam_c = ((post_w / 2 - r) * math.sin(cam) + (post_d / 2 - r) * math.cos(cam)
+             + r + p["lip_clear"])
+    y_cam_start = (cam_c - preload * math.sin(cam) - hw_in * math.sin(cam)) / math.cos(cam)
     arm_free = y_cam_start + lip_reach / 2 + post_d / 2 + pad_t
     spread_peak = post_w / 2 - (hw_in - lip_reach)
-    x_crest_seated = hw_in + preload - lip_reach
-    lip_release = post_w / 2 - x_crest_seated
+    y_back_in = -(post_d / 2 + pad_t)
 
-    # The arm is a plain rectangle again. It briefly carried a tie-guide channel
-    # down its outer face, which cost 8% of I — small, but worth computing
-    # rather than waving at, since this is the number the grip margin rests on.
-    # The channel is gone; if one comes back, subtract its strip here.
-    I = h * arm_t ** 3 / 12
-    k = 3 * E * I / arm_free ** 3          # N/mm at the tip, per arm
+    # ---- the spring, including the back wall ------------------------------
+    # The arm is NOT a cantilever off a rigid root. It is rooted in a 6 mm back
+    # wall spanning the post, and the arms load that wall with F*L moments at
+    # each end, so the roots rotate too. That is about a quarter of the whole
+    # compliance. An earlier version of this file left it out and even claimed
+    # the back wall made the arm STIFFER — the sign was backwards, and every
+    # force it reported was 25% high.
+    #
+    # Deflection per newton, for a force at distance a along the arm, at a
+    # point x along it (x >= a for the tip):
+    #   arm bending   a^2 (3x - a) / (6 E I_arm)
+    #   root rotation (F a) b / (2 E I_wall), times x
+    Ia = h * arm_t ** 3 / 12
+    Ib = h * p["back_t"] ** 3 / 12
+    b = 2 * hw_in                            # back wall span between the roots
 
-    print(f"  arm spring: {arm_t} x {h} mm section, {arm_free:.1f} mm free, "
-          f"I = {I:.0f} mm^4 -> {k:.1f} N/mm per arm")
+    def comp(a, x):
+        """Deflection at x per newton applied at a (x >= a)."""
+        return a * a * (3 * x - a) / (6 * E * Ia) + a * b * x / (2 * E * Ib)
+
+    L = arm_free
+    k_rigid = 3 * E * Ia / L ** 3
+    k = 1 / comp(L, L)                       # real tip stiffness, per arm
+    print(f"  arm spring: {arm_t} x {h} mm section, {L:.1f} mm free -> "
+          f"{k:.1f} N/mm at the tip  ({k_rigid:.1f} if the back wall were rigid; "
+          f"the wall is {1 - k / k_rigid:.0%} of the compliance)")
 
     # ---- 1. grip -----------------------------------------------------------
     # TWO sources, and getting this wrong by leaving the second one out is what
@@ -159,18 +188,25 @@ def main():
     # understates the root moment it comes with.
     pad_y1 = post_d / 2 - p["pad_front"]
     pad_y0 = pad_y1 - p["pad_side_len"]
-    y_back_in = -(post_d / 2 + pad_t)
     r0 = (pad_y0 - y_back_in) / arm_free
     r1 = (pad_y1 - y_back_in) / arm_free
     r_mid = (r0 + r1) / 2
     shape = (3 * r0 ** 2 - r0 ** 3) / 2      # deflection available at the back edge
 
-    k_pad = k / r_mid ** 3
+    a_pad = r_mid * L
+    k_pad = 1 / comp(a_pad, a_pad)
     normal = k_pad * preload
     f_preload = 2 * normal * mu
+    # The pads push at a_pad, but the TIP moves further than the pad does —
+    # and the tip is where the lip is. So seated, the lip is carried outward by
+    # more than `preload`, and the catch it keeps is less than lip_catch says.
+    tip_spread = normal * comp(a_pad, L)
+    catch = lip_reach - pad_t - (tip_spread - preload)
     print(f"  pads bear at {r0:.2f}-{r1:.2f} along the arm, so they see "
           f"{k_pad:.1f} N/mm, not the tip's {k:.1f}; at the back edge the arm "
           f"can supply {shape:.0%} of a tip deflection")
+    print(f"        seated, that spreads the tip {tip_spread:.2f} mm, not {preload}: "
+          f"the lips keep {catch:.2f} mm of catch, not {lip_catch}")
     if shape < 0.4:
         fails.append(f"the pads reach back to where only {shape:.0%} of the "
                      f"tip's deflection is available — they will jam, not grip")
@@ -201,29 +237,59 @@ def main():
                      f"moment's {f_moment:.0f} — too little left if the load comes off")
 
     # ---- 2. what it costs to get it on and off -----------------------------
-    lat = k * spread_peak
+    lat = k * spread_peak                    # real tip stiffness, back wall included
     axial = 2 * lat * math.tan(math.radians(p["lead_angle"]))
     print(f"  fitting: tip spreads {spread_peak} mm ({lat:.0f} N lateral per arm); "
           f"over the {p['lead_angle']:.0f} deg lead-in that is at least "
           f"{axial:.0f} N ({axial / G:.1f} kgf) of push")
-    # The cam is at 45 deg, so the force ratio pulling it off is tan(45) = 1 and
-    # the pull-off force is simply the force to spread the arms far enough for
-    # the crest to clear the post. This is the number the square-faced lip could
-    # not have quoted at all, because it had no defined release travel.
-    pull_off = 2 * k * lip_release
-    print(f"  holding on: {lip_release:.1f} mm of release travel over a "
-          f"{p['lip_cam']:.0f} deg cam = {pull_off:.0f} N ({pull_off / G:.1f} kgf) "
-          f"of straight pull, or squeeze the thumb tabs and it lifts off")
     if axial / G > 15:
         fails.append(f"insertion force {axial / G:.1f} kgf is too high to press on by hand")
-    if pull_off < 3 * load:
-        fails.append(f"pull-off {pull_off:.0f} N is under 3x the {load:.0f} N load")
+
+    # ---- 2b. does the LOAD open the lips? ----------------------------------
+    # The load case this file used to miss, and the one that would have let a
+    # helmet walk the clip off the post. The load's moment is reacted as a
+    # couple: back pad at the bottom, lips at the TOP, where they are pressed
+    # into the post's front corners with f_couple between them. The cam face
+    # turns that into outward push on the arm tip in the ratio
+    # tan(lip_cam - friction angle). If the tip opens by the catch, the lip
+    # rides over the corner and nothing is holding the clip on.
+    #
+    # Two things make it worse than the plain tip stiffness suggests, and both
+    # are in here: the push lands at the TOP corner of a 36 mm tall arm, not
+    # along its whole edge (CORNER below — an estimate, and the softest number
+    # in this file), and dropping a load onto a hook is not a static load
+    # (DYNAMIC — hanging a helmet by hand, not a drop from height).
+    CORNER, DYNAMIC = 0.6, 2.0
+    phi = math.atan(p["mu_petg"])
+    ratio = max(math.tan(cam - phi), 0.0)
+    push = ratio * f_couple / 2              # per lip
+    opens = push / (CORNER * k)
+    print(f"  holding on: the load presses each lip into its corner with "
+          f"{f_couple / 2:.1f} N; a {p['lip_cam']:.0f} deg face turns {ratio:.2f} of "
+          f"that into outward push")
+    print(f"        the top of each arm opens {opens:.2f} mm static, "
+          f"{opens * DYNAMIC:.2f} hanging it on, of {catch:.2f} mm of catch  "
+          f"({catch / (opens * DYNAMIC) if opens else float('inf'):.1f}x)")
+    if opens * DYNAMIC > 0.7 * catch:
+        fails.append(f"hanging the load opens the lips {opens * DYNAMIC:.2f} mm of "
+                     f"{catch:.2f} — steepen lip_cam")
+    # Straight pull, for information. Removal is by squeezing the tabs; a steep
+    # face makes this deliberately large.
+    pull_ratio = max(math.tan(cam - phi), 0.05)
+    pull_off = 2 * k * catch / pull_ratio
+    print(f"        straight pull to remove: {pull_off:.0f} N "
+          f"({pull_off / G:.1f} kgf) — squeeze the tabs instead, "
+          f"{2 * k * catch:.0f} N between them")
 
     # ---- 3. strain ---------------------------------------------------------
     # Peak is momentary, during insertion; sustained is what sits there for
     # years and is the one creep cares about.
-    peak = 3 * arm_t * spread_peak / (2 * arm_free ** 2)
-    sustained = 3 * arm_t * preload / (2 * arm_free ** 2)
+    # From the root MOMENT, not the rigid-root strain formula: with the back wall
+    # taking a quarter of the deflection, the arm itself bends less than the
+    # imposed spread, and the old formula charged it for all of it.
+    sect = h * arm_t ** 2 / 6
+    peak = k * spread_peak * L / sect / E
+    sustained = normal * a_pad / sect / E
     print(f"  strain: {peak * 100:.2f}% peak while fitting, "
           f"{sustained * 100:.2f}% sustained once on  (PETG yields around 2.5%)")
     if peak > 0.020:
@@ -246,13 +312,8 @@ def main():
     # stress at the same imposed deflection.
     r_fil = p["fillet_r"]
     kt = 1 + 0.27 * (r_fil / arm_t) ** -0.55
-    # Peak is the lips going over the post, which IS a tip deflection. Sustained
-    # is the pads pressing, which is not: the load sits r_mid along the arm, so
-    # the root moment is normal * (r_mid * arm_free) rather than anything the
-    # tip-deflection strain would give.
-    sect = h * arm_t ** 2 / 6
     s_peak = E * peak * kt
-    s_sus = normal * (r_mid * arm_free) / sect * kt
+    s_sus = E * sustained * kt
     yld = p["petg_yield_mpa"]
     print(f"  root stress: fillet r{r_fil} on a {arm_t} mm arm is r/t "
           f"{r_fil / arm_t:.2f}, Kt {kt:.2f} -> {s_peak:.0f} MPa peak while "
