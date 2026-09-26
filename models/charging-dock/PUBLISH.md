@@ -32,8 +32,10 @@ parameter if your chargers differ from mine.
 - **TPU mat** with a tapered lip that grips each puck so a lifted phone cannot
   pull it out, five studs that press into the plate so the mat needs no glue,
   and optional cut-in textures (honeycomb, chevron tread, cracked stone).
-- **Four styles** — `soft_monolith`, `furniture`, `floating_deck`, `faceted` —
-  same functional core, different corner radii, chamfers and shadow gaps.
+- **Five styles** — `soft_monolith`, `furniture`, `floating_deck`, `faceted`,
+  `atelier` — same functional core, different corner radii, chamfers and
+  shadow gaps. `atelier` goes further: the TPU becomes two island inlays with
+  a solid bridge between them.
 - **Verified, not hoped**: the repo's checkers confirm on the exported meshes
   that everything fits the bed, is watertight, that mating parts only touch,
   and that no layer prints into thin air.

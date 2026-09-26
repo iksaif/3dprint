@@ -90,10 +90,17 @@ module fit_dummies() {
 
 // Coupon layout (all within 40 x 40): puck-seat quadrant at [0,31]^2,
 // recess corner at [31,40]^2, plug trench cross-section at [0,18] x [31,39].
+//
+// The corner sample has to follow the recess that actually exists. With split
+// islands that corner is the island's, not the body's: sampling the old spot
+// cut air and a couple of slivers, because the island's radius has taken away
+// everything inside the window. Either way, start 3 mm outside the corner.
 fit_qx0 = puck_xs[0] - fit_quadrant;
 fit_qy0 = puck_y - fit_quadrant;
-fit_cx0 = -body_width / 2 + recess_border - 3;
-fit_cy0 = recess_border - 3;
+fit_cx0 = split_islands ? puck_xs[0] - island_width / 2 - 3
+                        : -body_width / 2 + recess_border - 3;
+fit_cy0 = split_islands ? puck_y - island_length / 2 - 3
+                        : recess_border - 3;
 fit_quadrant_span = fit_quadrant + 1;
 
 module fit_test_plate() {

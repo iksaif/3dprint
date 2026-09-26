@@ -184,7 +184,7 @@ make check       # just the verification (needs the STLs)
 make plates      # the two per-dock 3MF sets
 make shots       # showcase render per style into docs/
 make fit-test    # the two fit coupons
-make all-styles  # build and check all four styles in turn
+make all-styles  # build and check all five styles in turn
 make STYLE=faceted build/top_plate.stl     # any single file, any style
 ```
 
@@ -217,4 +217,4 @@ halves, the mat in its recess, the measured cable path, the mat's studs in
 their holes), and
 **`support.py`**, which confirms nothing prints into thin air. The model's own
 `max_bridge_span` asserts already claimed that in source; this is the first time
-it has been measured on the mesh, and all four styles pass.
+it has been measured on the mesh, and all five styles pass.
