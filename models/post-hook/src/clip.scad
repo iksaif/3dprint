@@ -221,13 +221,42 @@ module pads() {
 
 // ---------- the post --------------------------------------------------------
 // Solid, because springcheck.py intersects things with it; post_mock is the
-// same thing dressed for a render.
+// same thing dressed for a render. Drawn at pw x pd — the post the geometry is
+// built around — so the checks compare the clip with the post it was drawn
+// for, whatever fit_adjust is compensating.
 module post_solid(h = 160) {
     translate([0, 0, -h / 2 + collar_h / 2]) linear_extrude(h)
         offset(post_corner_r) offset(-post_corner_r)
-            square([post_w, post_d], center = true);
+            square([pw, pd], center = true);
 }
 module post_mock() { color("#c8c8c8", 0.4) post_solid(); }
+
+// ---------- the calibration slice -------------------------------------------
+// A thin slice of the collar, for finding fit_adjust. Because the collar is a
+// prism along print Z, a slice has EXACTLY the full clip's fit in x and y —
+// lips, cams and all — for a few minutes of print instead of an hour.
+//
+// What it does not reproduce is the force: stiffness scales with height, so a
+// 6 mm slice springs about 6x more easily than the real clip. It answers "does
+// it fit, and how", not "how hard is it to push on". The stress at a given
+// spread does not depend on height, so it is no more likely to break.
+//
+// The chamfer is kept on purpose: elephant's foot pinches the first layers of
+// the real clip, and a slice without the chamfer would measure better than the
+// clip it is standing in for.
+//
+// Engraved on top of the back wall with its own fit_adjust, so a row of them
+// cannot get mixed up. Top-face engraving is support-free.
+calib_h = 6;
+module calib_slice() {
+    difference() {
+        chamfered_extrude(calib_h, chamfer) collar_2d();
+        translate([0, (y_back_in + y_back_out) / 2, calib_h - 0.6])
+            linear_extrude(1)
+                text(str(fit_adjust), size = 3.6, halign = "center",
+                     valign = "center", font = "Liberation Sans:style=Bold");
+    }
+}
 
 // ---------- the assembly, as it actually sits -------------------------------
 // Parts are modelled UNSPRUNG, because that is what gets printed. Drawn that

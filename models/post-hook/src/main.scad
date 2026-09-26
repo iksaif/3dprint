@@ -29,6 +29,7 @@ else if (part == "clip_m") clip("m");
 else if (part == "clip_l") clip("l");
 else if (part == "pad_back") pad_back_flat();
 else if (part == "pad_side") pad_side_flat();
+else if (part == "calib")    calib_slice();
 else if (part == "assembly") {
     if (show_post) post_mock();
     if (show_seated) {

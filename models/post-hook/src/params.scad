@@ -59,6 +59,26 @@ post_d_max     = 40.5;
 // jammed both lips by 0.8 mm.
 post_corner_r  = 0.5;   // measured: these posts are near enough square
 
+// ---- Print compensation --------------------------------------------------------
+// How much bigger, PER SIDE, to draw everything the post sits in. The model
+// used to assume parts print to size, and the first print of the corrected
+// clip said otherwise: bare, with no pads, it was already tight, where the
+// design left 0.7 mm of clearance a side. Printed cavities come out undersize,
+// the first layers pinch in, and posts are rarely exactly 40.00.
+//
+// It is applied by building the geometry around a DRAWN post, pw x pd, rather
+// than the measured one. The cavity, the lips, the cams and the back wall all
+// derive from that, so they move together; the mock post the checks intersect
+// with is drawn the same size, so every check still compares like with like.
+// What this does NOT change is the spring: moving the arms out a fraction of a
+// millimetre is invisible to the stiffness.
+//
+// Found by printing the calibration ladder (`make calib`, see PRINTING.md), not
+// guessed. 0 until then.
+fit_adjust     = 0;
+pw             = post_w + 2 * fit_adjust;   // the post the geometry is drawn around
+pd             = post_d + 2 * fit_adjust;
+
 // ---- TPU pads ----------------------------------------------------------------
 // Three FLAT slabs — one for the back wall, two for the arms — printed lying
 // down. Thin, and with no teeth.
@@ -297,9 +317,10 @@ tie_t          = 2.2;   // along y: a 1.3 mm tie doubled, plus clearance
 tie_z          = collar_h / 2;
 
 // ---- Derived collar geometry ----------------------------------------------
-hw_in          = post_w / 2 + pad_t - preload;   // arm inner face, unloaded
+// Everything below is built around the DRAWN post, pw x pd — see fit_adjust.
+hw_in          = pw / 2 + pad_t - preload;         // arm inner face, unloaded
 x_out          = hw_in + arm_t;                    // arm outer face
-y_back_in      = -(post_d / 2 + pad_t);          // back wall inner face
+y_back_in      = -(pd / 2 + pad_t);                // back wall inner face
 y_back_out     = y_back_in - back_t;               // ... and outer: the hook's root
 // The cam face lies on the line x sin(a) + y cos(a) = cam_c, with a = lip_cam,
 // tangent to the post's corner arc (centred at post_w/2 - r, post_d/2 - r) once
@@ -312,8 +333,8 @@ y_back_out     = y_back_in - back_t;               // ... and outer: the hook's 
 // the angle in a sqrt(2), and changing lip_cam would have changed nothing.
 cam_sin        = sin(lip_cam);
 cam_cos        = cos(lip_cam);
-cam_c          = (post_w / 2 - post_corner_r) * cam_sin
-               + (post_d / 2 - post_corner_r) * cam_cos
+cam_c          = (pw / 2 - post_corner_r) * cam_sin
+               + (pd / 2 - post_corner_r) * cam_cos
                + post_corner_r + lip_clear;
 cam_c_unl      = cam_c - preload * cam_sin;        // ... where it is DRAWN
 y_cam_start    = (cam_c_unl - hw_in * cam_sin) / cam_cos;   // leaves the arm face
@@ -327,11 +348,11 @@ y_arm_end      = y_ramp_top + arm_nose;
 // arc. The crest must be INBOARD of that point or the face never reaches the
 // arc at all.
 x_crest_seated = hw_in + preload - lip_reach;
-x_arc_touch    = post_w / 2 - post_corner_r + (post_corner_r + lip_clear) * cam_sin;
+x_arc_touch    = pw / 2 - post_corner_r + (post_corner_r + lip_clear) * cam_sin;
 
 // Release travel: how far the arms must spread for the crest to clear the
 // post's widest point. Squeezing the thumb tabs is what supplies it.
-lip_release    = post_w / 2 - x_crest_seated;
+lip_release    = pw / 2 - x_crest_seated;
 
 // Anchored to the END of the crest, because everything behind it is either cam
 // face or post.
@@ -349,7 +370,7 @@ arm_free       = y_cam_start + lip_reach / 2 - y_back_in;
 // it again double-counts. It is also not additive with the pads: mid-arm the
 // post only asks for preload, less than this, so the tip governs and the arm
 // simply bends into a curve.
-spread_peak    = post_w / 2 - (hw_in - lip_reach);
+spread_peak    = pw / 2 - (hw_in - lip_reach);
 
 // ---- Derived pad geometry ---------------------------------------------------
 // In params and not in clip.scad, because main.scad and the checkers `use`
@@ -364,7 +385,7 @@ pad_back_w     = 2 * (hw_in - fillet_r - pad_clear);
 
 // The side pads are anchored at their FRONT end and run back pad_side_len, so
 // they sit on the compliant end of the arm rather than at the rigid root.
-pad_side_y1    = post_d / 2 - pad_front;
+pad_side_y1    = pd / 2 - pad_front;
 pad_side_y0    = pad_side_y1 - pad_side_len;
 pad_side_w     = pad_side_len;
 
@@ -685,7 +706,7 @@ assert(hk_root_y < y_back_in, "hook root reaches through the back wall");
 assert(stem_bot_at(hk_root_y) > chamfer,
        "stem root, extrapolated into the wall, lands below the bottom chamfer");
 
-assert(!tie_slot || tie_y - tie_t / 2 > post_d / 2,
+assert(!tie_slot || tie_y - tie_t / 2 > pd / 2,
        "the tie slot opens into the post's front face instead of clearing it");
 assert(!tie_slot || tie_z + tie_w / 2 < collar_h - chamfer,
        "the cable-tie slot breaks out of the collar's top");

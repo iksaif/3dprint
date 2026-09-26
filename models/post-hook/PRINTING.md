@@ -19,12 +19,38 @@ boundary is a crack path in a part that flexes every time it goes on.
 Flat on the bed, as exported. Six layers, no supports, nothing to orient: both
 faces are the same.
 
-## Print `test.3mf` first
+## Print the calibration ladder first — `make calib`
+
+`build/plates/calib.3mf`: five 6 mm slices of the collar, engraved `0`, `0.2`,
+`0.4`, `0.6`, `0.8`. Each one is drawn bigger by that much per side
+(`fit_adjust`). About 4 cm³ each, 30 layers — the whole plate is a fraction of
+one clip. Same settings as the clips.
+
+A slice fits the post exactly as the full clip does — the collar is a prism
+along print Z, so lips, cams and cavity are all there. What it doesn't have is
+the clip's force: at 6 mm tall it springs ~6× more easily, so judge the *fit*,
+not the effort.
+
+**Try each one on the post, bare — no pads — and note which is which:**
+
+- won't go on
+- goes on but grips the post
+- goes on snug: no play side to side, but no squeeze either
+- rattles
+
+The snug one is what we want. Then with calipers, on the snug slice and on `0`:
+the inside width between the arms, at mid-height. Design value for `0` is
+41.4 mm, plus 2 × the engraved number for the others.
+
+From that, `fit_adjust` gets set once in `params.scad`, and everything —
+cavity, lips, cams, back wall, the checks — follows it.
+
+## Then `test.3mf`
 
 One `clip_m` and one set of pads. Everything worth learning is a property of
 the whole arm, so no coupon will tell you.
 
-## Then measure — the model assumes perfect dimensions
+## Measure — the model assumes perfect dimensions unless told otherwise
 
 The model has no tolerance term. Printed cavities come out undersize, the
 first layers pinch in (elephant's foot), and posts are rarely exactly 40.00.

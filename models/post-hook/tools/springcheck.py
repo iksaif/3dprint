@@ -120,7 +120,12 @@ def main():
 
     arm_t, h, E = p["arm_t"], p["collar_h"], p["petg_e_mpa"]
     preload, lip_catch = p["preload"], p["lip_catch"]
-    pad_t, post_w, post_d = p["pad_t"], p["post_w"], p["post_d"]
+    pad_t = p["pad_t"]
+    # The DRAWN post, as params.scad builds the geometry around it — see
+    # fit_adjust. Leaving this at the measured post would check a different clip
+    # from the one being printed as soon as a correction was set.
+    post_w = p["post_w"] + 2 * p.get("fit_adjust", 0)
+    post_d = p["post_d"] + 2 * p.get("fit_adjust", 0)
     r = p["post_corner_r"]
     load = p["load_kg"] * G
     mu = p["mu_tpu"]

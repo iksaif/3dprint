@@ -32,3 +32,27 @@ FIT_CASES := pads:the three TPU pads vs the collar they sit in
 EXTRA_CHECKS = $(PYTHON) ./tools/springcheck.py
 
 include $(REPO)/mk/model.mk
+
+# ---- calibration ladder -------------------------------------------------------
+# Thin slices of the collar, each drawn bigger by a different fit_adjust, on one
+# plate. Push each onto the post and see which fits — see PRINTING.md. A slice
+# has exactly the full clip's fit, because the collar is a prism along print Z.
+#
+#   make calib      -> build/plates/calib.3mf
+CALIB_STEPS  := 0 0.2 0.4 0.6 0.8
+CALIB_STLS    = $(addprefix $(OUT)/calib/calib_,$(addsuffix .stl,$(CALIB_STEPS)))
+comma := ,
+empty :=
+space := $(empty) $(empty)
+
+.PHONY: calib
+calib: $(OUT)/plates/calib.3mf
+
+$(CALIB_STLS): $(OUT)/calib/calib_%.stl: $(SOURCES)
+	@mkdir -p $(@D)
+	$(SCADRUN) --export-format binstl -o $@ -D 'part="calib"' -D 'fit_adjust=$*' $(SCAD)
+
+$(OUT)/plates/calib.3mf: $(CALIB_STLS) src/calib_plate.scad
+	@mkdir -p $(@D)
+	$(SCADRUN) --enable=lazy-union -o $@ \
+	  -D 'steps=[$(subst $(space),$(comma),$(CALIB_STEPS))]' src/calib_plate.scad
