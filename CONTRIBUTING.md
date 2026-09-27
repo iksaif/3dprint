@@ -16,15 +16,25 @@ make OPENSCAD=/usr/bin/openscad
 
 ## Build and check
 
+From the repo root, for everything:
+
+```bash
+make            # build and check every model
+make check      # just the checks, every model
+make post-hook  # one model by name
+```
+
+Or inside one model, where the per-model options live:
+
 ```bash
 cd models/charging-dock
 make            # STLs, 3MFs, plates, then every check
 make check      # just the verification (needs the STLs)
+make STYLE=atelier OUT=build/atelier   # a specific style
 make clean
 ```
 
-CI runs exactly this for every model on every push, so if `make` is green
-locally it will be green there.
+CI runs the root `make`, so if that is green locally it will be green there.
 
 ## The rules a change has to keep
 

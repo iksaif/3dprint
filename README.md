@@ -29,7 +29,11 @@ models/<name>/   one model each: src/, tools/, Makefile, README
 attic/           superseded files kept for reference; not built, not shipped
 ```
 
-## Building a model
+## Building
+
+From the root, `make` builds and checks every model, `make check` runs only the
+checks, and `make <name>` does a single one. CI runs exactly that. Inside a
+model, where the per-model options live:
 
 ```bash
 cd models/helmet-holder

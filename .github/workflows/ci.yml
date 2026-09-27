@@ -44,11 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$TMPDIR"
-          for model in models/*/; do
-            echo "::group::$model"
-            make -C "$model" OPENSCAD="$OPENSCAD"
-            echo "::endgroup::"
-          done
+          make OPENSCAD="$OPENSCAD"
 
       - name: Upload the exported parts
         if: always()
