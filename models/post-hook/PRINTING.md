@@ -10,9 +10,13 @@
 | Orientation | as exported | the post's axis is print Z — do not lay it down |
 
 **Perimeters is the one that matters.** At the default 2, each arm prints as
-1.8 mm of perimeter around a 1.8 mm sparse core. In bending that core sits at
-the neutral axis and costs only ~12% of the stiffness, but the perimeter–infill
-boundary is a crack path in a part that flexes every time it goes on.
+1.8 mm of perimeter around a 1.8 mm sparse core, and the two skins either side
+of it strain differently every time the arm flexes — the perimeter–infill
+boundary is the crack path. With 4, everything that flexes is perimeters only:
+the 3.6 mm arms (8 lines) and the 3.15 mm band round each back corner (7
+lines), which is drawn at constant width for exactly this reason. Check it in
+the slicer's preview: no infill colour anywhere in the arms or the corners.
+The middle of the back wall may have some; that part does not flex.
 
 There is no TPU any more — one part, one material.
 
@@ -54,7 +58,7 @@ lips, cams, back wall, the checks — follows it.
 ## Then `test.3mf`
 
 One `clip_m`. Push it on, hang the helmet, and see whether it stays without the
-tie — the model says it should, by 1.5×, on a pessimistic friction figure. Then
+tie — the model says it should, by 1.4×, on a pessimistic friction figure. Then
 add a tie and see that it does not move at all.
 
 ## Measure — the model assumes perfect dimensions unless told otherwise

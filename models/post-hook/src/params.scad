@@ -196,9 +196,30 @@ fillet_r       = 2.5;
 // stress goes as 1/t^2. springcheck.py charges the root for it. Kept to a
 // fraction of the arm on purpose; centring the slot on the corner outright
 // would take ~1 mm, and cost the root nearly half again in stress.
+//
+// THE CORNER IS A BAND OF CONSTANT THICKNESS, bend_t, and that is a printing
+// requirement before it is a stress one. A slicer fills anything wider than its
+// perimeters with infill, and a perimeter / infill / perimeter sandwich is the
+// wrong thing to bend: the two skins strain differently and the bond between
+// them and the infill is where it cracks. The arm is 8 lines wide, so with 4
+// perimeters a side it is solid — but the corner used to be a block ~5 mm
+// across its diagonal, with infill in it, exactly where the moment peaks.
+//
+// So the slot goes down until the wall under it is bend_t thick, and the outer
+// corner is rounded CONCENTRIC with the slot's bottom, at relief_r + bend_t.
+// The flexing part of the U is then one strip, bend_t wide all the way from
+// the arm, round the corner and into the back wall: perimeters only. Past the
+// slot's inner side the back wall thickens to back_t and may carry infill —
+// but there the same moment meets (back_t / bend_t)^2 = 3.7x the section.
+//
+// relief_off is one extrusion width, so bend_t is a whole number of lines (7)
+// and the band prints as perimeters with no gap fill down its core.
+print_perimeters = 4;   // what PRINTING.md tells the slicer — the asserts hold it
 relief_r       = 1.5;
-relief_depth   = 2.0;   // into the 6 mm back wall; 4 mm of it left behind
-relief_off     = 0.5;   // into the arm; the root is arm_t - relief_off thick
+relief_off     = extrusion_w;   // into the arm; the root is arm_t - relief_off
+bend_t         = arm_t - relief_off;   // the band round the corner
+relief_depth   = back_t - bend_t;      // into the back wall, leaving bend_t
+bend_r_out     = relief_r + bend_t;    // outer corner, concentric with the slot
 chamfer        = 0.8;   // top and bottom edge chamfer. Must stay under
                         // lip_reach/2 or chamfered_extrude erodes the lip away.
 
@@ -338,6 +359,10 @@ hw_in          = pw / 2 + arm_clear;               // arm inner face
 x_out          = hw_in + arm_t;                    // arm outer face
 y_back_in      = -(pd / 2 + back_clear);           // back wall inner face
 y_back_out     = y_back_in - back_t;               // ... and outer: the hook's root
+// Where the arm stops being straight: the centre of the relief slot's bottom,
+// round which the corner band turns. The cantilever's root is here, not at the
+// back wall's face — the arm runs on down beside the slot before it bends.
+y_root         = y_back_in - relief_depth + relief_r;
 // The cam face lies on the line x sin(a) + y cos(a) = cam_c, with a = lip_cam,
 // tangent to the post's corner arc (centred at pw/2 - r, pd/2 - r). Its unit
 // normal is (sin a, cos a), so the tangent constant is just the arc centre
@@ -370,8 +395,8 @@ wall_ib        = collar_h * pow(back_t, 3) / 12;
 function arm_comp(a, x) = a * a * (3 * x - a) / (6 * petg_e_mpa * arm_ia)
                         + a * (2 * hw_in) * x / (2 * petg_e_mpa * wall_ib);
 arm_free_rest  = (cam_c - hw_in * cam_sin) / cam_cos + (arm_clear + lip_catch) / 2
-               - y_back_in;
-grip_a         = grip_y0 - y_back_in;
+               - y_root;
+grip_a         = grip_y0 - y_root;
 grip_tip       = grip * arm_comp(grip_a, arm_free_rest) / arm_comp(grip_a, grip_a);
 
 y_cam_start    = (cam_c - (hw_in + grip_tip) * cam_sin) / cam_cos; // leaves the arm face
@@ -395,10 +420,10 @@ lip_release    = pw / 2 - x_crest_seated;
 // face or post.
 tie_y          = y_lip_end + tie_t / 2 + 0.4;
 
-// Arm free length for the spring calculation: root at the back wall's inner
-// face, tip at the middle of the cam face, which is where the post bears.
-// Everything springcheck.py says depends on this.
-arm_free       = y_cam_start + lip_reach / 2 - y_back_in;
+// Arm free length for the spring calculation: root at y_root, where the corner
+// band starts to turn, tip at the middle of the cam face, which is where the
+// post bears. Everything springcheck.py says depends on this.
+arm_free       = y_cam_start + lip_reach / 2 - y_root;
 
 // How far the arm's TIP is spread at the worst moment of insertion: the lip's
 // crest, at hw_in - lip_reach, has to clear the post's side face at pw/2. With
@@ -416,7 +441,7 @@ grip_x         = pw / 2 - grip;                    // the land's face
 // available at a fraction r of the way along. This is the curve that makes a
 // full-length squeeze impossible and a short forward one fine.
 function cant_shape(r) = (3 * r * r - r * r * r) / 2;
-grip_r0        = (grip_y0 - grip_lead - y_back_in) / arm_free;   // ramp foot
+grip_r0        = (grip_y0 - grip_lead - y_root) / arm_free;      // ramp foot
 grip_shape     = cant_shape(grip_r0);
 
 // ---- The hook ------------------------------------------------------------------
@@ -722,6 +747,11 @@ assert(relief_off >= 0 && arm_t - relief_off >= 0.8 * arm_t,
        "relief_off takes more than a fifth of the arm at its root");
 assert(back_t - relief_depth >= min_wall,
        "the corner relief leaves less than min_wall of back wall");
+// Everything that flexes must print as perimeters only — no infill sandwich.
+assert(arm_t <= 2 * print_perimeters * extrusion_w + 0.01,
+       "the arm is wider than its perimeters: it will print with infill in the spring");
+assert(bend_t <= 2 * print_perimeters * extrusion_w + 0.01,
+       "the corner band is wider than its perimeters: infill where the moment peaks");
 assert(grip_y0 - grip_lead > y_back_in + fillet_r + relief_r,
        "the grip lands reach back into the corner relief");
 assert(hook_rake > max_overhang_angle,

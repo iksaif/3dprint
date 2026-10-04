@@ -132,6 +132,12 @@ def main():
     lip_reach = p["arm_clear"] + lip_catch
     hw_in = post_w / 2 + p["arm_clear"]
     y_back_in = -(post_d / 2 + p["back_clear"])
+    # The corner band: relief_off is one extrusion width, the band is what is
+    # left of the arm, and the slot goes down until the wall under it matches.
+    # The arm is straight down to the slot's bottom centre, so that is its root.
+    t_root = arm_t - p["extrusion_w"]
+    relief_r = p["relief_r"]
+    y_root = y_back_in - (p["back_t"] - t_root) + relief_r
     cam = math.radians(p["lip_cam"])
     cam_c = ((post_w / 2 - r) * math.sin(cam) + (post_d / 2 - r) * math.cos(cam)
              + r + p["lip_clear"])
@@ -160,12 +166,12 @@ def main():
     # length for that at rest, to break the circle; so does this.
     grip_y1 = post_d / 2 - p["grip_front"]
     grip_y0 = grip_y1 - p["grip_len"]
-    a_land = grip_y0 - y_back_in
+    a_land = grip_y0 - y_root
     free_rest = ((cam_c - hw_in * math.sin(cam)) / math.cos(cam)
-                 + lip_reach / 2 - y_back_in)
+                 + lip_reach / 2 - y_root)
     grip_tip = grip * comp(a_land, free_rest) / comp(a_land, a_land)
     y_cam_start = (cam_c - (hw_in + grip_tip) * math.sin(cam)) / math.cos(cam)
-    arm_free = y_cam_start + lip_reach / 2 - y_back_in
+    arm_free = y_cam_start + lip_reach / 2 - y_root
 
     L = arm_free
     k_rigid = 3 * E * Ia / L ** 3
@@ -287,9 +293,8 @@ def main():
     # Peak is momentary, during insertion; sustained is what sits there for
     # years and is the one creep cares about. From the root MOMENT, not the
     # rigid-root strain formula: the back wall takes a share of the deflection.
-    # At the ROOT section, which relief_off has thinned: the moment there is
-    # the same, the section modulus goes as t^2.
-    t_root = arm_t - p["relief_off"]
+    # At the ROOT section — the corner band, relief_off thinner than the arm:
+    # the moment there is the same, the section modulus goes as t^2.
     sect = h * t_root ** 2 / 6
     peak = k * spread_peak * L / sect / E
     sustained = normal * a_land / sect / E
@@ -300,24 +305,26 @@ def main():
     if sustained > 0.010:
         fails.append(f"sustained strain {sustained * 100:.2f}% will creep")
 
-    # ---- 3b. root stress, where the arm meets the back wall ----------------
+    # ---- 3b. root stress, round the corner band ----------------------------
     # The arms are pushed OUTWARD, so the tension face at the root is the inner,
-    # cavity-facing one. With the corner relief, that face no longer turns the
-    # fillet: it runs straight down into the relief slot and turns round its
-    # radius, relief_r, which is what sets Kt now.
-    #
-    # Kt is the standard stepped-bar-in-bending concentration, fitted from the
-    # published charts. Approximate, and deliberately on the conservative side:
-    # it is here to show whether the margin is 1.2 or 2, not to be exact.
-    r_root = p["relief_r"]
-    kt = 1 + 0.27 * (r_root / t_root) ** -0.55
+    # cavity-facing one — the relief slot's surface. The root is no longer a
+    # step but a curved bar of constant width t_root round an inner radius
+    # relief_r, so the concentration is the curved-beam one: bending stress
+    # piles up on the inside of a curve because the neutral axis shifts toward
+    # the centre. For a rectangular section, exactly:
+    #   r_n = t / ln(r_o / r_i),  e = r_c - r_n,  sigma_i = M (r_n - r_i) / (A e r_i)
+    # and the factor is that over the straight bar's 6 M / (b t^2).
+    r_i, r_o = relief_r, relief_r + t_root
+    r_c = (r_i + r_o) / 2
+    r_n = t_root / math.log(r_o / r_i)
+    kt = ((r_n - r_i) / (t_root * (r_c - r_n) * r_i)) / (6 / t_root ** 2)
     s_peak = E * peak * kt
     s_sus = E * sustained * kt
     yld = p["petg_yield_mpa"]
-    print(f"  root stress: relief r{r_root} on the root's {t_root} mm "
-          f"({arm_t} less relief_off) is r/t "
-          f"{r_root / t_root:.2f}, Kt {kt:.2f} -> {s_peak:.0f} MPa peak while "
-          f"fitting ({yld / s_peak:.2f}x on yield), {s_sus:.0f} MPa sustained")
+    print(f"  root stress: a {t_root:.2f} mm band round r{r_i} (r_c/c "
+          f"{r_c / (t_root / 2):.2f}), curved-beam Kt {kt:.2f} -> {s_peak:.0f} MPa "
+          f"peak while fitting ({yld / s_peak:.2f}x on yield), "
+          f"{s_sus:.0f} MPa sustained")
     if s_peak > yld / 1.3:
         fails.append(f"peak root stress {s_peak:.0f} MPa leaves under 1.3x on "
                      f"a {yld:.0f} MPa yield — open up relief_r")

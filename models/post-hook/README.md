@@ -7,7 +7,7 @@ squeeze the tabs to take it off again. A cable tie through the lips locks it.
 |  |  |
 |---|---|
 | **Parts** | `clip_s` / `clip_m` / `clip_l` — PETG, nothing else |
-| **Load** | 1 kg: 1.5× on friction with no tie, 5.6× with a hand-pulled one |
+| **Load** | 1 kg: 1.4× on friction with no tie, 5.5× with a hand-pulled one |
 | **Fixings** | none. A cable tie is optional and the slots are there for it |
 | **Supports** | none |
 
@@ -32,14 +32,14 @@ The clip is a C that wraps three faces of the post. The two arms are the
 spring. Along most of their length they clear the post by 0.1 mm a side and
 touch nothing; near the front, a **grip land** 12 mm long stands 0.4 mm proud
 of each arm's inner face, so putting the clip on springs the arms open there
-and they squeeze back. That is 15 N a side and what keeps the clip in place with
+and they squeeze back. That is 13 N a side and what keeps the clip in place with
 nothing on it.
 
 The squeeze is only part of the load path. The rest is the load's own moment,
 which presses the back wall and the lips into the post with about 15 N each —
 self-energising, so its margin holds whatever you hang on it. Together, on
-bare PETG with a pessimistic μ of 0.25: 15 N of friction against a 9.8 N load,
-1.5×. The cable tie turns that into as much as you like; 5 N of tie tension
+bare PETG with a pessimistic μ of 0.25: 14 N of friction against a 9.8 N load,
+1.4×. The cable tie turns that into as much as you like; 6 N of tie tension
 reaches 2×, and a firm pull by hand is several times that.
 
 Each arm ends in a lip whose retention face is a **cam tangent to the post's
@@ -57,10 +57,10 @@ case untested: **the load's own moment**. It presses the tops of the lips into
 the post's front corners, and a 45° face turned ~60% of that push into outward
 force on the arms — 0.85 mm of a 1.26 mm catch at 1 kg static, which hanging a
 helmet on would roughly have doubled. At 25° only 19% comes back, and the lips
-open 0.53 mm of 1.24 even allowing 2× for the load being hung on rather than
+open 0.58 mm of 1.26 even allowing 2× for the load being hung on rather than
 set down. `springcheck.py` checks this.
 
-The catch is 1.24 mm rather than the nominal 2.0, because the grip lands bear
+The catch is 1.26 mm rather than the nominal 2.0, because the grip lands bear
 0.6 of the way along the arm and the tip — where the lip is — moves further
 than the land does. That is in the check too.
 
@@ -140,16 +140,35 @@ cavity, and against a square corner it left 0.28 mm of room — which a 0.2 mm
 print undersize all but closes. The post's corners were the first thing to
 touch.
 
-So the corner is no longer filled, it is **relieved**: a slot sunk 2 mm into the
+So the corner is no longer filled, it is **relieved**: a slot sunk into the
 back wall at each inside corner, the arm's inner face running straight down
 into it. A square post corner sits in open space.
 
 It goes into the back wall and not the arm because the corner is also the arm's
 **root**, and its tension face is exactly the arm's inner face — a dog-bone
 centred on the corner would bite ~1 mm into the most stressed section of the
-part. The slot is pushed 0.5 mm into the arm (`relief_off`) as a compromise,
-for room round the post's edge, and the root is charged for it: 3.1 mm of arm
-there instead of 3.6.
+part. The slot is pushed one extrusion width (0.45 mm) into the arm
+(`relief_off`) as a compromise, for room round the post's edge.
+
+### The corner is a band, and it prints as perimeters only
+
+A slicer fills anything wider than its perimeters with infill, and a
+perimeter / infill / perimeter sandwich is the wrong thing to bend: the two
+skins strain differently and it cracks along the infill bond. The arm is 8
+lines, solid at 4 perimeters — but the old corner was a ~5 mm block across its
+diagonal, with infill in it, right where the moment peaks.
+
+So the corner is now a **band of constant width**, `bend_t` = 3.15 mm (7
+lines): the slot goes down until the wall under it is that thick, and the outer
+corner is rounded concentric with the slot's bottom, at r4.65. The part that
+flexes is one strip, arm → round the corner → into the back wall, perimeters
+only. Past the slot the back wall thickens to 6 mm and may carry infill, but
+there the same moment meets 3.7× the section. Asserts hold both the arm and the
+band to `2 × print_perimeters × extrusion_w`.
+
+The root is a curved bar now, so `springcheck.py` uses the exact curved-beam
+factor for it (1.55 for a 3.15 mm band round r1.5), and measures the arm from
+where the band starts to turn.
 
 ## Where the stress goes
 
@@ -167,7 +186,7 @@ with `t` — a thicker arm carries *more* root stress, not less, while also
 needing more force to fit. The levers are the root radius, a longer arm, or
 less interference.
 
-Peak stress while fitting is 18 MPa, 2.7× on yield. The number worth watching
+Peak stress while fitting is 18 MPa round the corner band, 2.7× on yield. The number worth watching
 is the **sustained** one — 9 MPa sits at the root for as long as the clip is on
 the post, and PETG creeps. `springcheck.py` fails above 22 MPa; the cable tie is
 the fix if a particular clip ever goes slack.
@@ -308,19 +327,19 @@ test a catch is to move the part until it fouls.
 From `make check`, on the default 40 × 40 post:
 
 ```
-arm spring   3.6 x 36 mm, 41.1 mm free, back wall -> 9.1 N/mm at the TIP
+arm spring   3.6 x 36 mm, 42.5 mm free, back wall -> 8.4 N/mm at the TIP
                                                      (wall is 24% of it)
-grip lands   bear 0.60 along the arm, 0.4 mm     ->  15 N a side, 7 N friction
-catch        lands spread the tip 0.76 mm        ->  1.24 mm left of 2.0
-grip         7 N lands + 7 N from the moment     ->  1.5x on 1 kg, no tie
-tie          5 N of tension reaches 2x           ->  5.6x at a 40 N hand pull
-fitting      2.0 mm of spread, 30 deg lead-in    ->  2.2 kgf of push
-lips         25 deg face, load hung on           ->  open 0.53 of 1.24 mm (2.3x)
-removal      tabs 2.3 kgf; straight pull         ->  11.9 kgf
-strain       0.65% peak while fitting, 0.32% sustained  (PETG yields ~2.5%)
-root stress  relief r1.5 on 3.1 mm, Kt 1.40  ->  18 MPa peak, 2.7x on yield
-                                                  9 MPa sustained
-catch test   ~0 mm^3 at rest (tangent), 56 mm^3 pulled 1 mm off
+grip lands   bear 0.61 along the arm, 0.4 mm     ->  13 N a side, 6 N friction
+catch        lands spread the tip 0.74 mm        ->  1.26 mm left of 2.0
+grip         6 N lands + 7 N from the moment     ->  1.4x on 1 kg, no tie
+tie          6 N of tension reaches 2x           ->  5.5x at a 40 N hand pull
+fitting      2.0 mm of spread, 30 deg lead-in    ->  2.0 kgf of push
+lips         25 deg face, load hung on           ->  open 0.58 of 1.26 mm (2.2x)
+removal      tabs 2.1 kgf; straight pull         ->  11.0 kgf
+strain       0.60% peak while fitting, 0.28% sustained  (PETG yields ~2.5%)
+root stress  3.15 mm band round r1.5, Kt 1.55  ->  18 MPa peak, 2.7x on yield
+                                                    9 MPa sustained
+catch test   ~0 mm^3 at rest (tangent), 57 mm^3 pulled 1 mm off
 
 All of it assumes the part prints to size — that is what fit_adjust is for.
 ```

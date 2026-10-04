@@ -60,12 +60,26 @@ function collar_pts() = [
 // are convex, so a small opening rounds them without touching anything else —
 // every other convex corner is already rounded to corner_r, which is larger.
 relief_edge_r = 0.4;
+relief_cx = hw_in + relief_off - relief_r;
 module corner_reliefs_2d() {
-    cx = hw_in + relief_off - relief_r;
     for (m = [0, 1]) mirror([m, 0, 0])
         hull() {
-            translate([cx, y_back_in + fillet_r]) circle(relief_r);
-            translate([cx, y_back_in - relief_depth + relief_r]) circle(relief_r);
+            translate([relief_cx, y_back_in + fillet_r]) circle(relief_r, $fn = 96);
+            translate([relief_cx, y_root]) circle(relief_r, $fn = 96);
+        }
+}
+
+// The outer back corners, rounded concentric with the slot's bottom so the
+// corner is a band of constant width bend_t — perimeters only, see bend_t in
+// params.scad. Cut as the corner square minus the arc; the square overshoots
+// the outline on both outer sides, so it crosses those faces rather than
+// landing on them.
+module corner_rounds_2d() {
+    for (m = [0, 1]) mirror([m, 0, 0])
+        difference() {
+            translate([relief_cx, y_back_out - 1])
+                square([x_out + 1 - relief_cx, y_root - y_back_out + 1]);
+            translate([relief_cx, y_root]) circle(bend_r_out, $fn = 96);
         }
 }
 
@@ -74,6 +88,7 @@ module collar_2d() {
         difference() {
             smooth2d(fillet_r, corner_r) polygon(collar_pts());
             corner_reliefs_2d();
+            corner_rounds_2d();
         }
 }
 
