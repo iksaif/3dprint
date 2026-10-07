@@ -28,6 +28,10 @@ first ladder (0 … 0.8) put the answer near 0.2; this one brackets it, with the
 corner relief and the grip lands now in. Same settings as the clips, a few
 minutes each.
 
+On the author's MK4S and PETG this landed on **0.1** — the grip lands came out
+at 39.14 for a 39.2 target — and that is what `params.scad` is set to. Another
+printer or filament: print the ladder again.
+
 A slice fits the post exactly as the full clip does — the collar is a prism
 along print Z, so lips, cams, grip lands and cavity are all there. What it
 doesn't have is the clip's force: at 6 mm tall it springs ~6× more easily, so

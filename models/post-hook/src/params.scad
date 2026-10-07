@@ -86,7 +86,20 @@ post_corner_r  = 0;
 // is an overall undersize, not over-extrusion closing the gap — so growing the
 // cavity is the right correction rather than thinning the walls. Post measured
 // 40.0 x 40.0.
-fit_adjust     = 0.2;
+//
+// Then 0.1, from the second ladder (0.1 / 0.2 / 0.3, with grip lands and corner
+// reliefs). All three fitted; the 0.1 slice measured:
+//
+//   across the grip lands     39.14 mm  against 39.40 drawn  -> 0.13 a side
+//   between the arms, behind  40.11 mm  against 40.40 drawn  -> 0.15 a side
+//   mouth between the crests  35.65 mm  against 36.20 drawn  -> 0.28 a side
+//
+// The lands are what matter, and 39.14 is within 0.06 of the 39.2 they are
+// meant to print at — post - 2 * grip. The arms still clear the post behind
+// them by ~0.05 a side, so no interference at the root. The mouth reads small
+// because the calipers sit on a rounded crest; it means ~2.2 mm of catch
+// against 2.0, which only adds a little push.
+fit_adjust     = 0.1;
 pw             = post_w + 2 * fit_adjust;   // the post the geometry is drawn around
 pd             = post_d + 2 * fit_adjust;
 
