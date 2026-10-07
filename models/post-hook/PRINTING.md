@@ -43,7 +43,11 @@ The one we want squeezes: it clicks over the corners, then holds on the lands.
 Also look at the back corners — the post's square corners should sit in the
 relief slots without touching.
 
-Then, with calipers, on that slice, at mid-height:
+Then, with calipers, on that slice, at mid-height — where exactly is in
+[docs/measure.png](docs/measure.png), rendered by `tools/measure.scad`:
+
+![where to measure](docs/measure.png)
+
 
 1. **Across the grip lands** (the narrowest point between the arms, just
    behind the lips). Design value: 39.2 + 2 × `fit_adjust` — 39.6 on the `0.2`
